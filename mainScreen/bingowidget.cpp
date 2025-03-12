@@ -37,8 +37,8 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     // 카메라 뷰
     cameraView = new QLabel(cameraArea);
-    cameraView->setMinimumSize(320, 240);
-    cameraView->setFixedSize(320, 240);
+    cameraView->setMinimumSize(480, 360);
+    cameraView->setFixedSize(480, 360);
     cameraView->setAlignment(Qt::AlignCenter);
     cameraView->setText("Camera connecting...");
     cameraView->setFrameShape(QFrame::Box);
@@ -51,6 +51,13 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     startButton = new QPushButton("Start", controlsWidget);
     stopButton = new QPushButton("Stop", controlsWidget);
     stopButton->setEnabled(false);
+    
+    QFont buttonFont = startButton->font();
+    buttonFont.setPointSize(14);
+    startButton->setFont(buttonFont);
+    stopButton->setFont(buttonFont);
+    startButton->setMinimumHeight(40);
+    stopButton->setMinimumHeight(40);
     
     controlsLayout->addWidget(startButton);
     controlsLayout->addWidget(stopButton);
@@ -84,13 +91,13 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     rgbValueLabel = new QLabel("R: 0  G: 0  B: 0", circleWidget);
     rgbValueLabel->setAlignment(Qt::AlignCenter);
-    rgbValueLabel->setMinimumHeight(40);
+    rgbValueLabel->setMinimumHeight(50);
     rgbValueLabel->setFrameShape(QFrame::Panel);
     rgbValueLabel->setFrameShadow(QFrame::Sunken);
-    QFont font = rgbValueLabel->font();
-    font.setBold(true);
-    font.setPointSize(11);
-    rgbValueLabel->setFont(font);
+    QFont labelFont = rgbValueLabel->font();
+    labelFont.setBold(true);
+    labelFont.setPointSize(14);
+    rgbValueLabel->setFont(labelFont);
     
     // 원 설정 레이아웃 완성
     circleLayout->addWidget(circleCheckBox);
@@ -116,10 +123,10 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     mainLayout->setStretchFactor(cameraArea, 1);
     
     // 각 영역이 고정된 너비를 유지하도록 설정
-    bingoArea->setMinimumWidth(350);
-    bingoArea->setMaximumWidth(350);
-    cameraArea->setMinimumWidth(350);
-    cameraArea->setMaximumWidth(350);
+    bingoArea->setMinimumWidth(500);
+    bingoArea->setMaximumWidth(500);
+    cameraArea->setMinimumWidth(500);
+    cameraArea->setMaximumWidth(500);
     
     setLayout(mainLayout);
     
@@ -147,6 +154,15 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
         cameraView->setText("Camera connection failed");
         startButton->setEnabled(false);
     }
+
+    // 체크박스 폰트 크기 증가
+    QFont checkboxFont = circleCheckBox->font();
+    checkboxFont.setPointSize(12);
+    circleCheckBox->setFont(checkboxFont);
+    rgbCheckBox->setFont(checkboxFont);
+
+    // 슬라이더 설정
+    circleSlider->setMinimumHeight(30);
 }
 
 BingoWidget::~BingoWidget() {
