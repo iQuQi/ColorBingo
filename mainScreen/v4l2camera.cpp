@@ -102,6 +102,28 @@ void V4L2Camera::initDevice()
         qDebug() << "VIDIOC_S_FMT error:" << strerror(errno);
         return;
     }
+    
+    // Set frame rate (FPS improvement)
+    struct v4l2_streamparm streamparm;
+    CLEAR(streamparm);
+    streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    
+    // Get current settings
+    if (xioctl(fd, VIDIOC_G_PARM, &streamparm) == -1) {
+        qDebug() << "VIDIOC_G_PARM error:" << strerror(errno);
+    } 
+    else if (streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
+        // Set frame rate to 30fps (time interval = 1second/fps)
+        streamparm.parm.capture.timeperframe.numerator = 1;
+        streamparm.parm.capture.timeperframe.denominator = 30;
+        
+        if (xioctl(fd, VIDIOC_S_PARM, &streamparm) == -1) {
+            qDebug() << "VIDIOC_S_PARM error:" << strerror(errno);
+        }
+        
+        qDebug() << "Camera FPS set to:" << streamparm.parm.capture.timeperframe.denominator 
+                 << "/" << streamparm.parm.capture.timeperframe.numerator;
+    }
 
     initMMAP();
 }
@@ -257,7 +279,7 @@ void V4L2Camera::captureThreadLoop()
     fd_set fds;
     struct timeval tv;
     int r;
-    int errorCount = 0;  // 연속적인 오류 횟수 추적
+    int errorCount = 0;  // Track consecutive errors
 
     while (!stopThread) {
         FD_ZERO(&fds);
@@ -274,18 +296,18 @@ void V4L2Camera::captureThreadLoop()
                 continue;
             qDebug() << "select error:" << strerror(errno);
             
-            // 오류 감지 및 처리
+            // Error detection and handling
             errorCount++;
-            if (errorCount > 3) {  // 3번 이상 연속 오류 발생
+            if (errorCount > 3) {  // More than 3 consecutive errors
                 emit deviceDisconnected();
-                qDebug() << "장치 연결이 끊어진 것으로 감지됨";
+                qDebug() << "Device connection lost detected";
                 break;
             }
             
             continue;
         }
 
-        errorCount = 0;  // 오류가 없으면 카운터 리셋
+        errorCount = 0;  // Reset counter if no errors
 
         if (r == 0) {
             // Timeout, no data available
@@ -313,8 +335,8 @@ bool V4L2Camera::readFrame()
         case EIO:
             // Could ignore EIO, see spec
             // fall through
-        case ENODEV:  // 장치 없음 오류
-            qDebug() << "카메라 장치 오류 발생: " << strerror(errno);
+        case ENODEV:  // Device not found error
+            qDebug() << "Camera device error: " << strerror(errno);
             emit deviceDisconnected();
             return false;
         default:
@@ -362,6 +384,10 @@ void V4L2Camera::yuv422ToRgb888(const void *yuv, QImage &rgbImage)
             unsigned char Y1 = pp[(i * width + j * 2) * 2 + 2];
             unsigned char V  = pp[(i * width + j * 2) * 2 + 3];
             
+            // 밝기 향상 (Y 값 증가)
+            Y0 = qBound(0, (int)(Y0 * 1.2), 255);  // 20% 밝게
+            Y1 = qBound(0, (int)(Y1 * 1.2), 255);  // 20% 밝게
+            
             // YUV -> RGB 변환
             // 첫 번째 픽셀
             int R0 = Y0 + 1.4075 * (V - 128);
@@ -373,14 +399,14 @@ void V4L2Camera::yuv422ToRgb888(const void *yuv, QImage &rgbImage)
             int G1 = Y1 - 0.3455 * (U - 128) - 0.7169 * (V - 128);
             int B1 = Y1 + 1.7790 * (U - 128);
             
-            // 범위 체크
-            R0 = qBound(0, R0, 255);
-            G0 = qBound(0, G0, 255);
-            B0 = qBound(0, B0, 255);
+            // 색상 보정: 붉은기 약간 감소
+            R0 = qBound(0, (int)(R0 * 1.25), 255);   // 빨간색 25% 증가 (35%→25%)
+            G0 = qBound(0, (int)(G0 * 0.85), 255);   // 녹색 15% 감소 (20%→15%)
+            B0 = qBound(0, (int)(B0 * 0.85), 255);   // 파란색 15% 감소 (20%→15%)
             
-            R1 = qBound(0, R1, 255);
-            G1 = qBound(0, G1, 255);
-            B1 = qBound(0, B1, 255);
+            R1 = qBound(0, (int)(R1 * 1.25), 255);   // 빨간색 25% 증가 (35%→25%)
+            G1 = qBound(0, (int)(G1 * 0.85), 255);   // 녹색 15% 감소 (20%→15%)
+            B1 = qBound(0, (int)(B1 * 0.85), 255);   // 파란색 15% 감소 (20%→15%)
             
             // QImage에 픽셀 설정
             rgbImage.setPixel(j * 2, i, qRgb(R0, G0, B0));

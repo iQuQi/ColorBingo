@@ -236,6 +236,71 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
 
     // 슬라이더 설정
     circleSlider->setMinimumHeight(30);
+
+    // 픽셀 스타일 곰돌이 이미지 생성 (디자인 수정)
+    bearImage = QPixmap(80, 80);
+    bearImage.fill(Qt::transparent);
+    QPainter painter(&bearImage);
+    
+    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    
+    // 갈색 곰돌이 색상
+    QColor bearColor(165, 113, 78);
+    QColor darkBearColor(120, 80, 60);
+    
+    // 중앙 정렬을 위한 오프셋
+    int offsetX = 5;
+    int offsetY = 5;
+    
+    // 기본 얼굴 사각형
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(bearColor);
+    painter.drawRect(15 + offsetX, 20 + offsetY, 40, 40);
+    
+    // 얼굴 둥글게 만들기 - 픽셀 추가
+    painter.drawRect(11 + offsetX, 25 + offsetY, 4, 30);  // 왼쪽
+    painter.drawRect(55 + offsetX, 25 + offsetY, 4, 30);  // 오른쪽
+    painter.drawRect(20 + offsetX, 16 + offsetY, 30, 4);  // 위
+    painter.drawRect(20 + offsetX, 60 + offsetY, 30, 4);  // 아래
+    
+    // 추가 픽셀로 더 둥글게 표현
+    painter.drawRect(15 + offsetX, 20 + offsetY, 5, 5);   // 좌상단 보강
+    painter.drawRect(50 + offsetX, 20 + offsetY, 5, 5);   // 우상단 보강
+    painter.drawRect(15 + offsetX, 55 + offsetY, 5, 5);   // 좌하단 보강
+    painter.drawRect(50 + offsetX, 55 + offsetY, 5, 5);   // 우하단 보강
+    
+    // 모서리 픽셀 추가
+    painter.drawRect(12 + offsetX, 21 + offsetY, 3, 4);   // 좌상단 모서리
+    painter.drawRect(55 + offsetX, 21 + offsetY, 3, 4);   // 우상단 모서리
+    painter.drawRect(12 + offsetX, 55 + offsetY, 3, 4);   // 좌하단 모서리
+    painter.drawRect(55 + offsetX, 55 + offsetY, 3, 4);   // 우하단 모서리
+    
+    // 귀 위치 및 크기 조정 (가로 길이 축소)
+    // 왼쪽 귀 - 가로 길이 축소 (13→10)
+    painter.drawRect(16 + offsetX, 6 + offsetY, 10, 16);  // 기본 왼쪽 귀 (가로 축소)
+    painter.drawRect(11 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 왼쪽 보강
+    painter.drawRect(26 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 오른쪽 보강 (좌표 조정)
+    
+    // 오른쪽 귀 - 가로 길이 축소 (13→10)
+    painter.drawRect(44 + offsetX, 6 + offsetY, 10, 16);  // 기본 오른쪽 귀 (가로 축소)
+    painter.drawRect(39 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 왼쪽 보강 (좌표 조정)
+    painter.drawRect(54 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 오른쪽 보강
+    
+    // 귀 안쪽 (더 어두운 색) - 가로 길이 축소 (7→6)
+    painter.setBrush(darkBearColor);
+    painter.drawRect(19 + offsetX, 9 + offsetY, 6, 10);   // 왼쪽 귀 안쪽 (가로 축소)
+    painter.drawRect(45 + offsetX, 9 + offsetY, 6, 10);   // 오른쪽 귀 안쪽 (가로 축소)
+    
+    // 눈 (간격 넓히기)
+    painter.setBrush(Qt::black);
+    painter.drawRect(22 + offsetX, 35 + offsetY, 6, 6);   // 왼쪽 눈 (좌표 조정 - 더 왼쪽으로)
+    painter.drawRect(42 + offsetX, 35 + offsetY, 6, 6);   // 오른쪽 눈 (좌표 조정 - 더 오른쪽으로)
+    
+    // 코 (위치 위로 올리고 크기 축소)
+    painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
+    
+    qDebug() << "Created adjusted pixel-style bear drawing, size:" << bearImage.width() << "x" << bearImage.height();
 }
 
 BingoWidget::~BingoWidget() {
@@ -348,24 +413,36 @@ void BingoWidget::updateCellStyle(int row, int col) {
         borderStyle += " border-right: 1px solid black;";
     }
     
-    QString style;
-    
-    if (bingoStatus[row][col]) {
-        // O 표시가 있는 경우 - 항상 흰색 텍스트
-        style = QString("background-color: %1; color: white; %2 "
-                      "font-size: 60px; font-weight: bold;")
-                .arg(cellColors[row][col].name())
-                .arg(borderStyle);
-        bingoCells[row][col]->setText("O");
-    } else {
-        // 기본 색상 (셀 텍스트는 없음)
-        style = QString("background-color: %1; %2")
-                .arg(cellColors[row][col].name())
-                .arg(borderStyle);
-        bingoCells[row][col]->setText("");
-    }
+    // 기본 스타일 적용
+    QString style = QString("background-color: %1; %2")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
     
     bingoCells[row][col]->setStyleSheet(style);
+    
+    if (bingoStatus[row][col]) {
+        // 곰돌이 이미지 적용 - 더 크게 스케일링
+        QPixmap scaledBear = bearImage.scaled(
+            bingoCells[row][col]->width() - 20,  // 여백 축소 (30→20)
+            bingoCells[row][col]->height() - 20, // 여백 축소 (30→20)
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+        
+        // 텍스트 지우고 이미지 설정
+        bingoCells[row][col]->clear();
+        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+        
+        // 내부 여백을 균등하게 설정하여 정확히 중앙 정렬
+        int margin = 10; // 여백 축소 (15→10)
+        bingoCells[row][col]->setContentsMargins(margin, margin, margin, margin);
+        
+        bingoCells[row][col]->setPixmap(scaledBear);
+    } else {
+        // 이미지와 텍스트 모두 지우기
+        bingoCells[row][col]->clear();
+        bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);
+    }
 }
 
 QColor BingoWidget::getCellColor(int row, int col) {
@@ -386,10 +463,10 @@ int BingoWidget::colorDistance(const QColor &c1, const QColor &c2) {
     int hueDiff = qAbs(h1 - h2);
     hueDiff = qMin(hueDiff, 360 - hueDiff); // 원형 거리 계산
     
-    // 색조, 채도, 명도에 가중치 적용
-    double hueWeight = 1.5;    // 색조 차이에 높은 가중치
-    double satWeight = 0.8;    // 채도 차이에 중간 가중치
-    double valWeight = 0.7;    // 명도 차이에 낮은 가중치
+    // 색조, 채도, 명도에 가중치 적용 (색조와 채도 가중치 증가)
+    double hueWeight = 2.0;    // 색조 차이에 더 높은 가중치 (1.5 -> 2.0)
+    double satWeight = 1.0;    // 채도 차이에 증가된 가중치 (0.8 -> 1.0)
+    double valWeight = 0.5;    // 명도 차이에 감소된 가중치 (0.7 -> 0.5)
     
     // 정규화된 거리 계산
     double normHueDiff = (hueDiff / 180.0) * hueWeight;
@@ -499,6 +576,11 @@ void BingoWidget::calculateAverageRGB(const QImage &image, int centerX, int cent
         avgRed = sumR / pixelCount;
         avgGreen = sumG / pixelCount;
         avgBlue = sumB / pixelCount;
+        
+        // 추출된 RGB 값에 붉은 기 추가 (R 증가, G/B 감소)
+        avgRed = qBound(0, (int)(avgRed * 1.15), 255);   // 빨간색 15% 증가
+        avgGreen = qBound(0, (int)(avgGreen * 0.92), 255); // 녹색 8% 감소
+        avgBlue = qBound(0, (int)(avgBlue * 0.92), 255);  // 파란색 8% 감소
     } else {
         avgRed = avgGreen = avgBlue = 0;
     }
@@ -545,13 +627,13 @@ void BingoWidget::restartCamera()
 {
     if (isCapturing) {
         qDebug() << "Performing periodic camera reinitialization...";
-        // 카메라 중지
+        // Stop camera
         camera->stopCapturing();
         
-        // 잠시 대기
+        // Wait briefly
         QThread::msleep(500);
         
-        // 카메라 재시작
+        // Restart camera
         if (!camera->startCapturing()) {
             QMessageBox::warning(this, "Warning", "Camera restart failed. Will try again later.");
             return;
@@ -628,8 +710,8 @@ void BingoWidget::onCaptureButtonClicked() {
     // 색상 거리 계산 (값이 작을수록 유사)
     int distance = colorDistance(cameraColor, cellColor);
     
-    // 새로운 유사도 임계값 (0-100 스케일)
-    const int THRESHOLD = 40; // HSV 기반 거리가 40 이하면 유사하다고 판단
+    // 임계값 축소 (40 -> 30) - 더 엄격한 유사도 판정
+    const int THRESHOLD = 30; // HSV 기반 거리가 30 이하면 유사하다고 판단
     
     qDebug() << "Color distance:" << distance << "(Threshold:" << THRESHOLD << ")";
     
@@ -654,13 +736,30 @@ void BingoWidget::onCaptureButtonClicked() {
             borderStyle += " border-right: 1px solid black;";
         }
         
-        // 색상이 다르면 X 표시 (1초 후 사라짐) - 항상 흰색 텍스트
-        QString style = QString("background-color: %1; color: white; %2 "
-                              "font-size: 60px; font-weight: bold;")
-                          .arg(cellColors[row][col].name())
-                          .arg(borderStyle);
+        // 배경색 스타일 설정
+        QString style = QString("background-color: %1; %2")
+                       .arg(cellColors[row][col].name())
+                       .arg(borderStyle);
+        
         bingoCells[row][col]->setStyleSheet(style);
-        bingoCells[row][col]->setText("X");
+        
+        // 이미지 표시
+        bingoCells[row][col]->clear();
+        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+        
+        // X 이미지 여백도 동일하게 조정
+        int margin = 10; // 여백 축소 (15→10)
+        bingoCells[row][col]->setContentsMargins(margin, margin, margin, margin);
+        
+        // 이미지 크기도 더 크게 조정
+        QPixmap xImage = createXImage();
+        QPixmap scaledX = xImage.scaled(
+            bingoCells[row][col]->width() - 20, // 여백 축소 (30→20)
+            bingoCells[row][col]->height() - 20, // 여백 축소 (30→20)
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+        bingoCells[row][col]->setPixmap(scaledX);
         
         // 1초 후 X를 지우는 타이머 시작
         fadeXTimer->start(1000);
@@ -671,7 +770,8 @@ void BingoWidget::clearXMark() {
     // X 표시가 있는 셀이 있으면 원래대로 되돌리기
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
-            if (bingoCells[row][col]->text() == "X") {
+            // pixmap이 설정되어 있고, 체크되지 않은 셀인 경우
+            if (bingoCells[row][col]->pixmap() != nullptr && !bingoStatus[row][col]) {
                 updateCellStyle(row, col);
             }
         }
@@ -746,6 +846,8 @@ void BingoWidget::resetGame() {
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
             bingoStatus[row][col] = false;
+            bingoCells[row][col]->clear();  // 모든 내용 지우기
+            bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);  // 여백 초기화
         }
     }
     
@@ -769,4 +871,35 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
     if (successLabel) {
         successLabel->setGeometry(0, 0, width(), height());
     }
+}
+
+QPixmap BingoWidget::createXImage() {
+    QPixmap xImage(80, 80);
+    xImage.fill(Qt::transparent);
+    QPainter painter(&xImage);
+    
+    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    
+    // 흰색 픽셀로 X 그리기
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::white); // 흰색으로 설정
+    
+    // 왼쪽 위에서 오른쪽 아래로 가는 대각선
+    painter.drawRect(16, 16, 8, 8);
+    painter.drawRect(24, 24, 8, 8);
+    painter.drawRect(32, 32, 8, 8);
+    painter.drawRect(40, 40, 8, 8);
+    painter.drawRect(48, 48, 8, 8);
+    painter.drawRect(56, 56, 8, 8);
+    
+    // 오른쪽 위에서 왼쪽 아래로 가는 대각선
+    painter.drawRect(56, 16, 8, 8);
+    painter.drawRect(48, 24, 8, 8);
+    painter.drawRect(40, 32, 8, 8);
+    painter.drawRect(32, 40, 8, 8);
+    painter.drawRect(24, 48, 8, 8);
+    painter.drawRect(16, 56, 8, 8);
+    
+    return xImage;
 }

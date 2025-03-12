@@ -16,6 +16,7 @@
 #include <QTimer>
 #include <QThread>
 #include <QPair>
+#include <QPixmap>
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -111,6 +112,15 @@ private:
     // 성공 메시지 관련 멤버
     QLabel *successLabel;
     QTimer *successTimer;
+
+    // 선택된 셀의 RGB 값 표시 위젯 추가
+    QLabel *selectedCellRgbLabel;
+    QLabel *selectedCellRgbValueLabel;
+
+    // catImage에서 bearImage로 변경
+    QPixmap bearImage;
+
+    QPixmap createXImage(); // X 이미지 생성 함수 추가
 };
 
 #endif // BINGOWIDGET_H
