@@ -14,9 +14,13 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    bingowidget.cpp
+        bingowidget.cpp \
+        v4l2camera.cpp
 
 HEADERS  += mainwindow.h \
-    bingowidget.h
+    bingowidget.h \
+    v4l2camera.h
 
 FORMS    += mainwindow.ui
+
+LIBS += -lpthread
