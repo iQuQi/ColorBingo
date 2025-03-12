@@ -22,6 +22,7 @@ public:
 
 private slots:
     void showBingoScreen();
+    void showMainMenu();
 
 private:
     QStackedWidget *stackedWidget;

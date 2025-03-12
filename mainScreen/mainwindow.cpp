@@ -25,10 +25,15 @@ MainWindow::MainWindow(QWidget *parent) : QWidget(parent){
 
     connect(startButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
     connect(exitButton, &QPushButton::clicked, this, &QWidget::close);
+    connect(bingoWidget, &BingoWidget::backToMainRequested, this, &MainWindow::showMainMenu);
 }
 
 void MainWindow::showBingoScreen() {
     stackedWidget->setCurrentWidget(bingoWidget);
+}
+
+void MainWindow::showMainMenu() {
+    stackedWidget->setCurrentWidget(mainMenu);
 }
 
 MainWindow::~MainWindow()

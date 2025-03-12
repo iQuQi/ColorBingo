@@ -28,6 +28,10 @@ public:
 protected:
     void resizeEvent(QResizeEvent *event) override;
 
+signals:
+    void backToMainRequested();
+
+
 private slots:
     void updateCameraFrame();
     void handleCameraDisconnect();
@@ -36,6 +40,7 @@ private slots:
     void onRgbCheckBoxToggled(bool checked);
     void onStartButtonClicked();
     void onStopButtonClicked();
+    void onBackButtonClicked();
     void restartCamera();
     void onCaptureButtonClicked();
     void clearXMark();
@@ -79,6 +84,7 @@ private:
     QWidget *cameraArea;
     QGridLayout *gridLayout;
     QVBoxLayout *cameraLayout;
+//    QVBoxLayout *bingoLayout;
     
     // 빙고 관련 위젯
     QLabel *bingoCells[3][3];   // 빙고 셀 레이블
@@ -94,6 +100,7 @@ private:
     QPushButton *startButton;
     QPushButton *stopButton;
     QPushButton *captureButton;  // 캡처 버튼 추가
+//    QPushButton *backButton;
     
     // 원 표시 관련 위젯
     QSlider *circleSlider;
@@ -111,6 +118,8 @@ private:
     // 성공 메시지 관련 멤버
     QLabel *successLabel;
     QTimer *successTimer;
+
+    QPushButton *backButton;
 };
 
 #endif // BINGOWIDGET_H

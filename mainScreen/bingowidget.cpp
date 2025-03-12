@@ -21,7 +21,8 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     // 왼쪽 부분: 빙고 영역
     bingoArea = new QWidget(this);
     QVBoxLayout* bingoVLayout = new QVBoxLayout(bingoArea);
-    
+//    bingoLayout = new QVBoxLayout(bingoArea);
+
     // 빙고 점수 표시 레이블
     bingoScoreLabel = new QLabel("Bingo: 0", bingoArea);
     bingoScoreLabel->setAlignment(Qt::AlignCenter);
@@ -79,6 +80,10 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     // 빙고판이 세로 중앙 정렬되도록 아래쪽에 stretch 추가
     bingoVLayout->addStretch(1);
+
+    backButton = new QPushButton("Back", this);
+    bingoVLayout->addWidget(backButton, 0, Qt::AlignCenter);
+    connect(backButton, &QPushButton::clicked, this, &BingoWidget::onBackButtonClicked);
     
     // 성공 메시지 레이블 초기화
     successLabel = new QLabel("SUCCESS", this);
@@ -769,4 +774,9 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
     if (successLabel) {
         successLabel->setGeometry(0, 0, width(), height());
     }
+}
+
+
+void BingoWidget::onBackButtonClicked() {
+    emit backToMainRequested();
 }
