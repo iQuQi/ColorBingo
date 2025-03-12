@@ -5,7 +5,6 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QPushButton>
 #include <QLabel>
 #include <QRandomGenerator>
 #include <QSlider>
@@ -14,9 +13,9 @@
 #include <QMouseEvent>
 #include "v4l2camera.h"
 #include <QTimer>
-#include <QThread>
 #include <QPair>
 #include <QPixmap>
+#include <QPushButton>
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -39,15 +38,12 @@ private slots:
     void onCircleSliderValueChanged(int value);
     void onCircleCheckBoxToggled(bool checked);
     void onRgbCheckBoxToggled(bool checked);
-    void onStartButtonClicked();
-    void onStopButtonClicked();
-    void onBackButtonClicked();
-    void restartCamera();
-    void onCaptureButtonClicked();
     void clearXMark();
     void showSuccessMessage();
     void hideSuccessAndReset();
     void resetGame();
+    void restartCamera();
+    void onBackButtonClicked();
 
 private:
     // 빙고 관련 함수들
@@ -58,6 +54,12 @@ private:
     int colorDistance(const QColor &c1, const QColor &c2);
     bool isColorBright(const QColor &color);
     void updateBingoScore();
+    
+    // 셀 선택 및 카메라 제어 함수
+    void selectCell(int row, int col);
+    void deselectCell();
+    void startCamera();
+    void stopCamera();
     
     // 원 내부 픽셀의 RGB 평균값 계산 함수
     void calculateAverageRGB(const QImage &image, int centerX, int centerY, int radius);
@@ -97,12 +99,6 @@ private:
     QLabel *cameraView;
     V4L2Camera *camera;
     
-    // 컨트롤 버튼
-    QPushButton *startButton;
-    QPushButton *stopButton;
-    QPushButton *captureButton;  // 캡처 버튼 추가
-//    QPushButton *backButton;
-    
     // 원 표시 관련 위젯
     QSlider *circleSlider;
     QCheckBox *circleCheckBox;
@@ -113,22 +109,29 @@ private:
     QLabel *rgbValueLabel;
 
     // 타이머
-    QTimer *cameraRestartTimer;  // 카메라 재시작 타이머
     QTimer *fadeXTimer;         // X 표시 사라지는 타이머
+    QTimer *successTimer;       // 성공 메시지 타이머
+    QTimer *cameraRestartTimer; // 카메라 주기적 재시작 타이머
 
     // 성공 메시지 관련 멤버
     QLabel *successLabel;
-    QTimer *successTimer;
 
-    QPushButton *backButton;
-    // 선택된 셀의 RGB 값 표시 위젯 추가
-    QLabel *selectedCellRgbLabel;
-    QLabel *selectedCellRgbValueLabel;
-
-    // catImage에서 bearImage로 변경
+    // bearImage
     QPixmap bearImage;
+    QPixmap xImage;
 
-    QPixmap createXImage(); // X 이미지 생성 함수 추가
+    QPixmap createXImage(); // X 이미지 생성 함수
+
+    // 색상 보정 관련 함수
+    QImage adjustColorBalance(const QImage &image);
+    QColor correctBluecast(const QColor &color);
+
+    // Add this to the private section:
+    QLabel *statusMessageLabel; // Label for displaying game status messages
+
+    QPushButton* backButton; // Back 버튼
+
+    void updateBackButtonPosition();
 };
 
 #endif // BINGOWIDGET_H

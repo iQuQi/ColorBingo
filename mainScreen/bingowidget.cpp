@@ -3,11 +3,12 @@
 #include <QMessageBox>
 #include <QPainter>
 #include <QSizePolicy>
+#include <QThread>
 
 BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     isCapturing(false),
     showCircle(true),
-    circleRadius(15),
+    circleRadius(10),
     avgRed(0),
     avgGreen(0),
     avgBlue(0),
@@ -15,13 +16,27 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     selectedCell(-1, -1),
     bingoCount(0)
 {
+    qDebug() << "BingoWidget constructor started";
+    
+    // Initialize main variables (prevent null pointers)
+    cameraView = nullptr;
+    rgbValueLabel = nullptr;
+    circleSlider = nullptr;
+    rgbCheckBox = nullptr;
+    camera = nullptr;
+    circleValueLabel = nullptr;
+    circleCheckBox = nullptr; // Initialize to nullptr even though we won't use it
+    
     // 메인 레이아웃 생성 (가로 분할)
     mainLayout = new QHBoxLayout(this);
+    mainLayout->setContentsMargins(50, 20, 50, 20); // Equal left and right margins
+    mainLayout->setSpacing(50); // Space between bingo area and camera area
     
-    // 왼쪽 부분: 빙고 영역
+    // 왼쪽 부분: 빙고 영역 (오렌지색 네모)
     bingoArea = new QWidget(this);
     QVBoxLayout* bingoVLayout = new QVBoxLayout(bingoArea);
 //    bingoLayout = new QVBoxLayout(bingoArea);
+    bingoVLayout->setContentsMargins(0, 0, 0, 0);
 
     // 빙고 점수 표시 레이블
     bingoScoreLabel = new QLabel("Bingo: 0", bingoArea);
@@ -31,11 +46,22 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     scoreFont.setBold(true);
     bingoScoreLabel->setFont(scoreFont);
     bingoScoreLabel->setMinimumHeight(30);
-    
-    // 빙고판이 세로 중앙 정렬되도록 위쪽에 stretch 추가
+
+    // Status message label for game instructions
+    statusMessageLabel = new QLabel("Please select a cell to match colors", bingoArea);
+    statusMessageLabel->setAlignment(Qt::AlignCenter);
+    QFont messageFont = statusMessageLabel->font();
+    messageFont.setPointSize(11);
+    statusMessageLabel->setFont(messageFont);
+    statusMessageLabel->setMinimumHeight(30);
+    statusMessageLabel->setStyleSheet("color: red; font-weight: bold;"); // 빨간색으로 변경
+
+    // Add stretch to center bingo section vertically
     bingoVLayout->addStretch(1);
+
+    // Add score label above the grid
     bingoVLayout->addWidget(bingoScoreLabel);
-    
+
     // 빙고 그리드를 담을 컨테이너 위젯
     QWidget* gridWidget = new QWidget(bingoArea);
     gridWidget->setFixedSize(300, 300);
@@ -74,17 +100,16 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
             gridLayout->addWidget(bingoCells[row][col], row, col);
         }
     }
-    
+
     // 그리드 위젯을 VBox 레이아웃에 추가
     bingoVLayout->addWidget(gridWidget, 0, Qt::AlignCenter);
-    
-    // 빙고판이 세로 중앙 정렬되도록 아래쪽에 stretch 추가
+
+    // Add the status message label BELOW the grid
+    bingoVLayout->addWidget(statusMessageLabel, 0, Qt::AlignCenter);
+
+    // Add stretch to center bingo section vertically
     bingoVLayout->addStretch(1);
 
-    backButton = new QPushButton("Back", this);
-    bingoVLayout->addWidget(backButton, 0, Qt::AlignCenter);
-    connect(backButton, &QPushButton::clicked, this, &BingoWidget::onBackButtonClicked);
-    
     // 성공 메시지 레이블 초기화
     successLabel = new QLabel("SUCCESS", this);
     successLabel->setAlignment(Qt::AlignCenter);
@@ -98,90 +123,58 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);
-    cameraLayout = new QVBoxLayout(cameraArea);
-    
-    // 카메라 뷰
-    cameraView = new QLabel(cameraArea);
-    cameraView->setMinimumSize(480, 360);
-    cameraView->setFixedSize(480, 360);
-    cameraView->setAlignment(Qt::AlignCenter);
-    cameraView->setText("Camera connecting...");
-    cameraView->setFrameShape(QFrame::Box);
-    cameraView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    
-    // 카메라 컨트롤
-    QWidget *controlsWidget = new QWidget(cameraArea);
-    QHBoxLayout *controlsLayout = new QHBoxLayout(controlsWidget);
-    
-    startButton = new QPushButton("Start", controlsWidget);
-    stopButton = new QPushButton("Stop", controlsWidget);
-    captureButton = new QPushButton("Capture", controlsWidget);
-    stopButton->setEnabled(false);
-    captureButton->setEnabled(false);
-    
-    QFont buttonFont = startButton->font();
-    buttonFont.setPointSize(14);
-    startButton->setFont(buttonFont);
-    stopButton->setFont(buttonFont);
-    captureButton->setFont(buttonFont);
-    
-    // 모든 버튼 높이를 통일
-    startButton->setMinimumHeight(40);
-    stopButton->setMinimumHeight(40);
-    captureButton->setMinimumHeight(40);
-    
-    controlsLayout->addWidget(startButton);
-    controlsLayout->addWidget(stopButton);
-    controlsLayout->addWidget(captureButton);
-    
-    // 원 설정 위젯
-    QWidget *circleWidget = new QWidget(cameraArea);
-    QVBoxLayout *circleLayout = new QVBoxLayout(circleWidget);
-    
-    // 체크박스
-    circleCheckBox = new QCheckBox("Show Green Circle", circleWidget);
-    circleCheckBox->setChecked(showCircle);
-    
-    // 슬라이더 및 값 표시
-    QHBoxLayout *sliderLayout = new QHBoxLayout();
-    QLabel *sliderLabel = new QLabel("Circle Size:", circleWidget);
-    circleSlider = new QSlider(Qt::Horizontal, circleWidget);
-    circleSlider->setMinimum(5);
-    circleSlider->setMaximum(100);
-    circleSlider->setValue(circleRadius);
-    circleValueLabel = new QLabel(QString::number(circleRadius) + "%", circleWidget);
-    circleValueLabel->setMinimumWidth(30);
-    
-    sliderLayout->addWidget(sliderLabel);
-    sliderLayout->addWidget(circleSlider);
-    sliderLayout->addWidget(circleValueLabel);
-    
-    // RGB 값 표시
-    rgbCheckBox = new QCheckBox("Show RGB Average", circleWidget);
-    rgbCheckBox->setChecked(showRgbValues);
-    
-    rgbValueLabel = new QLabel("R: 0  G: 0  B: 0", circleWidget);
+    QVBoxLayout* cameraVLayout = new QVBoxLayout(cameraArea);
+    cameraVLayout->setAlignment(Qt::AlignTop); // Align to top
+    cameraVLayout->setContentsMargins(0, 0, 0, 0);
+    cameraVLayout->setSpacing(10); // Add spacing between elements
+
+    // Add stretch for vertical centering
+    cameraVLayout->addStretch(1);
+
+    // 1. RGB 값 표시 레이블 (맨 위에 배치)
+    rgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
+    rgbValueLabel->setFrameShape(QFrame::Box);
+    rgbValueLabel->setFixedHeight(30);
+    rgbValueLabel->setFixedWidth(300); // Same width as camera
     rgbValueLabel->setAlignment(Qt::AlignCenter);
-    rgbValueLabel->setMinimumHeight(50);
-    rgbValueLabel->setFrameShape(QFrame::Panel);
-    rgbValueLabel->setFrameShadow(QFrame::Sunken);
-    QFont labelFont = rgbValueLabel->font();
-    labelFont.setBold(true);
-    labelFont.setPointSize(14);
-    rgbValueLabel->setFont(labelFont);
+    QFont rgbFont = rgbValueLabel->font();
+    rgbFont.setPointSize(12);
+    rgbValueLabel->setFont(rgbFont);
+    cameraVLayout->addWidget(rgbValueLabel, 0, Qt::AlignCenter);
+
+    // 2. 카메라 뷰 (중간에 배치)
+    cameraView = new QLabel(cameraArea);
+    cameraView->setFixedSize(300, 300);
+    cameraView->setAlignment(Qt::AlignCenter);
+    cameraView->setText(""); // 문구 제거
+    cameraView->setFrameShape(QFrame::Box);
+    cameraVLayout->addWidget(cameraView, 0, Qt::AlignCenter);
+
+    // 3. 원 크기 조절 슬라이더 (맨 아래에 배치)
+    QWidget *sliderWidget = new QWidget(cameraArea);
+    sliderWidget->setFixedWidth(300); // Same width as camera
+    QHBoxLayout *circleSliderLayout = new QHBoxLayout(sliderWidget);
+    circleSliderLayout->setContentsMargins(0, 0, 0, 0);
+
+    QLabel *circleLabel = new QLabel("Circle Size:");
+    circleSlider = new QSlider(Qt::Horizontal);
+    circleSlider->setMinimum(5);
+    circleSlider->setMaximum(30);
+    circleSlider->setValue(circleRadius);
+    circleValueLabel = new QLabel(QString::number(circleRadius) + "%");
+
+    circleSliderLayout->addWidget(circleLabel);
+    circleSliderLayout->addWidget(circleSlider);
+    circleSliderLayout->addWidget(circleValueLabel);
+
+    cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
+
+    // Add stretch for vertical centering
+    cameraVLayout->addStretch(1);
     
-    // 원 설정 레이아웃 완성
-    circleLayout->addWidget(circleCheckBox);
-    circleLayout->addLayout(sliderLayout);
-    circleLayout->addWidget(rgbCheckBox);
-    circleLayout->addWidget(rgbValueLabel);
-    circleWidget->setLayout(circleLayout);
-    
-    // 카메라 영역에 위젯 추가
-    cameraLayout->addWidget(cameraView);
-    cameraLayout->addWidget(controlsWidget);
-    cameraLayout->addWidget(circleWidget);
-    cameraLayout->addStretch();
+    // 원 표시 관련 초기화 - 항상 표시되도록 수정
+    showCircle = true;  // 항상 원 표시
+    circleRadius = 10;  // 기본 반지름 10%
     
     // 메인 레이아웃에 두 영역 추가
     mainLayout->addWidget(bingoArea);
@@ -190,12 +183,6 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     // 분할 비율 고정 (왼쪽:오른쪽 = 1:1)
     mainLayout->setStretchFactor(bingoArea, 1);
     mainLayout->setStretchFactor(cameraArea, 1);
-    
-    // 각 영역이 고정된 너비를 유지하도록 설정
-    bingoArea->setMinimumWidth(500);
-    bingoArea->setMaximumWidth(500);
-    cameraArea->setMinimumWidth(500);
-    cameraArea->setMaximumWidth(500);
     
     // X 표시 사라지는 타이머 초기화
     fadeXTimer = new QTimer(this);
@@ -208,36 +195,24 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     // 카메라 초기화
     camera = new V4L2Camera(this);
     
+    // FPS 설정 줄 제거 (setFrameRate 메서드가 없음)
+    
     // 카메라 신호 연결
     connect(camera, &V4L2Camera::newFrameAvailable, this, &BingoWidget::updateCameraFrame);
     connect(camera, &V4L2Camera::deviceDisconnected, this, &BingoWidget::handleCameraDisconnect);
     
-    // 위젯 컨트롤 신호 연결
+    // 위젯 컨트롤 신호 연결 - remove RGB checkbox connection
     connect(circleSlider, &QSlider::valueChanged, this, &BingoWidget::onCircleSliderValueChanged);
-    connect(circleCheckBox, &QCheckBox::toggled, this, &BingoWidget::onCircleCheckBoxToggled);
-    connect(rgbCheckBox, &QCheckBox::toggled, this, &BingoWidget::onRgbCheckBoxToggled);
-    connect(startButton, &QPushButton::clicked, this, &BingoWidget::onStartButtonClicked);
-    connect(stopButton, &QPushButton::clicked, this, &BingoWidget::onStopButtonClicked);
-    connect(captureButton, &QPushButton::clicked, this, &BingoWidget::onCaptureButtonClicked);
     
-    // 카메라 재시작 타이머 추가
+    // 카메라 재시작 타이머 설정 (유지)
     cameraRestartTimer = new QTimer(this);
     cameraRestartTimer->setInterval(30 * 60 * 1000); // 30분마다 재시작
     connect(cameraRestartTimer, &QTimer::timeout, this, &BingoWidget::restartCamera);
     
-    // 카메라 열기 및 시작 시도
-    if (camera->openCamera("/dev/video4")) {
-        cameraView->setText("Click 'Start' button to start the camera");
-    } else {
+    // 카메라 열기만 하고 자동 시작은 하지 않음
+    if (!camera->openCamera("/dev/video4")) {
         cameraView->setText("Camera connection failed");
-        startButton->setEnabled(false);
     }
-
-    // 체크박스 폰트 크기 증가
-    QFont checkboxFont = circleCheckBox->font();
-    checkboxFont.setPointSize(12);
-    circleCheckBox->setFont(checkboxFont);
-    rgbCheckBox->setFont(checkboxFont);
 
     // 슬라이더 설정
     circleSlider->setMinimumHeight(30);
@@ -306,6 +281,26 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
     
     qDebug() << "Created adjusted pixel-style bear drawing, size:" << bearImage.width() << "x" << bearImage.height();
+
+    // X 이미지 생성
+    xImage = createXImage();
+    
+    qDebug() << "Basic variable initialization completed";
+    
+    qDebug() << "BingoWidget constructor completed";
+
+    // 대신 아래 코드 추가
+    backButton = new QPushButton("Back", this);
+    backButton->setFixedSize(80, 30); // 버튼 크기 고정
+    connect(backButton, &QPushButton::clicked, this, &BingoWidget::onBackButtonClicked);
+
+    // 스타일시트로 버튼 디자인 개선 (선택사항)
+    backButton->setStyleSheet("QPushButton { background-color: #4a86e8; color: white; "
+                             "border-radius: 4px; font-weight: bold; } "
+                             "QPushButton:hover { background-color: #3a76d8; }");
+                             
+    // 초기 위치 설정
+    updateBackButtonPosition();
 }
 
 BingoWidget::~BingoWidget() {
@@ -340,38 +335,146 @@ bool BingoWidget::eventFilter(QObject *obj, QEvent *event) {
                     return true; // 이벤트 처리됨으로 표시하고 무시
                 }
                 
-                // 이전 선택된 셀의 스타일 원래대로
+                // 이전에 선택된 셀이 있으면 선택 해제
                 if (selectedCell.first >= 0 && selectedCell.second >= 0) {
-                    updateCellStyle(selectedCell.first, selectedCell.second);
+                    deselectCell();
                 }
                 
-                // 새 셀 선택
-                selectedCell = qMakePair(row, col);
-                
-                // 경계선 스타일 생성
-                QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-                
-                if (row == 2) {
-                    borderStyle += " border-bottom: 1px solid black;";
-                }
-                if (col == 2) {
-                    borderStyle += " border-right: 1px solid black;";
-                }
-                
-                // 선택된 셀 강조 표시 (빨간색 테두리 3px)
-                QString style = QString("background-color: %1; %2 border: 3px solid red;")
-                               .arg(cellColors[row][col].name())
-                               .arg(borderStyle);
-                bingoCells[row][col]->setStyleSheet(style);
-                
-                // 카메라가 켜져있고 셀이 선택되었을 때만 캡처 버튼 활성화
-                captureButton->setEnabled(isCapturing);
-                
+                // 새 셀 선택 및 카메라 시작
+                selectCell(row, col);
                 return true;
             }
         }
     }
     return QWidget::eventFilter(obj, event);
+}
+
+// 셀 선택 및 카메라 시작 함수
+void BingoWidget::selectCell(int row, int col) {
+    qDebug() << "selectCell called: (" << row << "," << col << ")";
+    
+    // Range check
+    if (row < 0 || row >= 3 || col < 0 || col >= 3) {
+        qDebug() << "Invalid cell coordinates.";
+        return;
+    }
+    
+    selectedCell = qMakePair(row, col);
+    
+    // Safety check: verify bingoCells array
+    if (!bingoCells[row][col]) {
+        qDebug() << "bingoCells[" << row << "][" << col << "] is null.";
+        return;
+    }
+    
+    // Create border style
+    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+    
+    if (row == 2) {
+        borderStyle += " border-bottom: 1px solid black;";
+    }
+    if (col == 2) {
+        borderStyle += " border-right: 1px solid black;";
+    }
+    
+    // Highlight selected cell (3px red border)
+    QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
+    bingoCells[row][col]->setStyleSheet(style);
+    
+    // Don't set X mark (will be set after first frame in updateCameraFrame)
+    bingoCells[row][col]->clear();
+    
+    qDebug() << "Cell style update completed";
+    
+    // Start camera automatically
+    startCamera();
+    
+    // Update status message for selected cell
+    statusMessageLabel->setText("Try to match the color in the camera!");
+    
+    qDebug() << "selectCell completed";
+}
+
+// 셀 선택 해제 및 카메라 중지 함수
+void BingoWidget::deselectCell() {
+    if (selectedCell.first >= 0 && selectedCell.second >= 0) {
+        // 이미 빙고 처리된 셀이 아니라면 스타일 원래대로
+        if (!bingoStatus[selectedCell.first][selectedCell.second]) {
+            updateCellStyle(selectedCell.first, selectedCell.second);
+        }
+        
+        // 선택 상태 초기화
+        selectedCell = qMakePair(-1, -1);
+        
+        // Stop camera
+        stopCamera();
+        
+        // Reset status message
+        statusMessageLabel->setText("Please select a cell to match colors");
+    }
+}
+
+// 카메라 시작/중지 함수
+void BingoWidget::startCamera() {
+    qDebug() << "startCamera called";
+    
+    if (!isCapturing) {
+        // Safety check: verify camera object
+        if (!camera) {
+            qDebug() << "camera object is null.";
+            return;
+        }
+        
+        if (camera->startCapturing()) {
+            // Reset camera view stylesheet
+            if (cameraView) {
+                cameraView->setStyleSheet("");
+                cameraView->clear();
+            }
+            
+            isCapturing = true;
+            
+            // Safety check: verify cameraRestartTimer
+            if (cameraRestartTimer) {
+                cameraRestartTimer->start();
+                qDebug() << "Camera restart timer started";
+            }
+            
+            qDebug() << "Camera capture started successfully";
+        } else {
+            qDebug() << "Failed to start camera capture";
+            QMessageBox::critical(this, "Error", "Failed to start camera");
+        }
+    } else {
+        qDebug() << "Camera is already capturing.";
+    }
+}
+
+void BingoWidget::stopCamera() {
+    qDebug() << "stopCamera called";
+    
+    if (isCapturing) {
+        // Safety check: verify camera object
+        if (!camera) {
+            qDebug() << "camera object is null.";
+            return;
+        }
+        
+        camera->stopCapturing();
+        isCapturing = false;
+        
+        // Safety check: verify cameraRestartTimer
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
+            qDebug() << "Camera restart timer stopped";
+        }
+        
+        qDebug() << "Camera capture stopped";
+    } else {
+        qDebug() << "Camera is already stopped.";
+    }
 }
 
 // 채도가 낮은 랜덤 색상 생성
@@ -454,7 +557,7 @@ QColor BingoWidget::getCellColor(int row, int col) {
     return cellColors[row][col];
 }
 
-QString BingoWidget::getCellColorName(int row, int col) {
+QString BingoWidget::getCellColorName(int /* row */, int /* col */) {
     return "";
 }
 
@@ -468,10 +571,10 @@ int BingoWidget::colorDistance(const QColor &c1, const QColor &c2) {
     int hueDiff = qAbs(h1 - h2);
     hueDiff = qMin(hueDiff, 360 - hueDiff); // 원형 거리 계산
     
-    // 색조, 채도, 명도에 가중치 적용 (색조와 채도 가중치 증가)
-    double hueWeight = 2.0;    // 색조 차이에 더 높은 가중치 (1.5 -> 2.0)
-    double satWeight = 1.0;    // 채도 차이에 증가된 가중치 (0.8 -> 1.0)
-    double valWeight = 0.5;    // 명도 차이에 감소된 가중치 (0.7 -> 0.5)
+    // 색조, 채도, 명도에 가중치 적용 (가중치 증가하여 더 엄격한 판정)
+    double hueWeight = 3.0;    // 색조 차이에 매우 높은 가중치 (2.0 -> 3.0)
+    double satWeight = 1.5;    // 채도 차이에 증가된 가중치 (1.0 -> 1.5)
+    double valWeight = 0.7;    // 명도 차이에 약간 증가된 가중치 (0.5 -> 0.7)
     
     // 정규화된 거리 계산
     double normHueDiff = (hueDiff / 180.0) * hueWeight;
@@ -492,140 +595,331 @@ bool BingoWidget::isColorBright(const QColor &color) {
     return ((color.red() * 299) + (color.green() * 587) + (color.blue() * 114)) / 1000 > 128;
 }
 
+// 색상 보정 함수 추가
+QImage BingoWidget::adjustColorBalance(const QImage &image) {
+    qDebug() << "Color balance adjustment started";
+    
+    // Check if image is valid
+    if (image.isNull()) {
+        qDebug() << "ERROR: Input image is null, returning original";
+        return image;
+    }
+    
+    qDebug() << "Creating adjusted image copy, dimensions: " << image.width() << "x" << image.height();
+    
+    try {
+        // Create new image with same size
+        QImage adjustedImage = image.copy();
+        
+        // Color adjustment parameters
+        const double redReduction = 0.85;
+        const int blueGreenBoost = 5;
+        
+        qDebug() << "Processing image pixels with redReduction=" << redReduction << ", blueGreenBoost=" << blueGreenBoost;
+        
+        // Process image pixels - sample every 2nd pixel for performance
+        for (int y = 0; y < adjustedImage.height(); y += 2) {
+            for (int x = 0; x < adjustedImage.width(); x += 2) {
+                QColor pixel(adjustedImage.pixel(x, y));
+                
+                // Reduce red channel, increase blue and green channels
+                int newRed = qBound(0, static_cast<int>(pixel.red() * redReduction), 255);
+                int newGreen = qBound(0, pixel.green() + blueGreenBoost, 255);
+                int newBlue = qBound(0, pixel.blue() + blueGreenBoost, 255);
+                
+                // Apply new color
+                adjustedImage.setPixelColor(x, y, QColor(newRed, newGreen, newBlue));
+            }
+        }
+        
+        qDebug() << "Color balance adjustment completed successfully";
+        return adjustedImage;
+    }
+    catch (const std::exception& e) {
+        qDebug() << "ERROR: Exception in adjustColorBalance: " << e.what();
+        return image;  // Return original image on error
+    }
+    catch (...) {
+        qDebug() << "ERROR: Unknown exception in adjustColorBalance";
+        return image;  // Return original image on error
+    }
+}
+
+// updateCameraFrame 함수에 색상 보정 적용
 void BingoWidget::updateCameraFrame() {
-    // 카메라에서 새 프레임을 가져와 QLabel에 표시
+    qDebug() << "updateCameraFrame started";
+    
+    if (!camera) {
+        qDebug() << "ERROR: Camera object is null";
+        return;
+    }
+    
+    // Get new frame from camera
     QImage frame = camera->getCurrentFrame();
     
-    if (!frame.isNull()) {
-        // 영상 크기에 맞게 스케일링하되 QLabel 크기는 유지
-        QPixmap scaledPixmap = QPixmap::fromImage(frame).scaled(
+    if (frame.isNull()) {
+        qDebug() << "Camera frame is null";
+        return;
+    }
+    
+    // Safety check: verify cameraView is valid
+    if (!cameraView) {
+        qDebug() << "ERROR: cameraView is null";
+        return;
+    }
+    
+    try {
+        qDebug() << "Applying color balance adjustment";
+        // Apply color balance correction - with safety check
+        QImage adjustedFrame;
+        try {
+            adjustedFrame = adjustColorBalance(frame);
+            if (adjustedFrame.isNull()) {
+                qDebug() << "WARNING: Color adjustment returned null image, using original";
+                adjustedFrame = frame;
+            }
+        }
+        catch (...) {
+            qDebug() << "ERROR: Exception during color adjustment, using original frame";
+            adjustedFrame = frame;
+        }
+        
+        // Scale image to fit the QLabel while maintaining aspect ratio
+        QPixmap scaledPixmap = QPixmap::fromImage(adjustedFrame).scaled(
             cameraView->size(),
-            Qt::KeepAspectRatio,
+            Qt::IgnoreAspectRatio,
             Qt::SmoothTransformation);
             
-        // 중앙에 녹색 원 그리기
-        if (showCircle) {
-            // 픽셀맵에 그리기 위한 QPainter 생성
-            QPainter painter(&scaledPixmap);
+        qDebug() << "Starting to draw circle";
+        
+        // Create a copy of the pixmap for painting
+        QPixmap paintPixmap = scaledPixmap;
+        QPainter painter(&paintPixmap);
+        if (!painter.isActive()) {
+            qDebug() << "ERROR: Failed to create active painter";
+            cameraView->setPixmap(scaledPixmap);
+            return;
+        }
+        
             painter.setRenderHint(QPainter::Antialiasing);
             
-            // 원 중심 좌표 계산 (이미지 중앙)
-            int centerX = scaledPixmap.width() / 2;
-            int centerY = scaledPixmap.height() / 2;
-            
-            // 원의 반지름 계산 (이미지 너비의 percentage)
-            int radius = (scaledPixmap.width() * circleRadius) / 100;
-            
-            // 녹색 반투명 펜 설정
+        // Calculate circle center coordinates
+        int centerX = paintPixmap.width() / 2;
+        int centerY = paintPixmap.height() / 2;
+        
+        // Calculate circle radius (percentage of image width)
+        int radius = (paintPixmap.width() * circleRadius) / 100;
+        
+        // Set green pen with increased width
             QPen pen(QColor(0, 255, 0, 180));
-            pen.setWidth(2);
+        pen.setWidth(5);
             painter.setPen(pen);
             
-            // 원 그리기
+        // Draw circle
             painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
-            
-            // 원 영역 내부 RGB 평균 계산
-            calculateAverageRGB(frame, frame.width()/2, frame.height()/2, 
-                               (frame.width() * circleRadius) / 100);
+        painter.end();
+        
+        qDebug() << "Circle drawing completed";
+        
+        // Calculate RGB average inside circle area
+        if (adjustedFrame.width() > 0 && adjustedFrame.height() > 0) {
+            qDebug() << "Starting RGB average calculation";
+            // Calculate safe radius
+            int safeRadius = qMin((adjustedFrame.width() * circleRadius) / 100, 
+                               qMin(adjustedFrame.width()/2, adjustedFrame.height()/2));
                                
-            // RGB 값 업데이트
-            if (showRgbValues) {
+            calculateAverageRGB(adjustedFrame, adjustedFrame.width()/2, adjustedFrame.height()/2, safeRadius);
+            qDebug() << "RGB average calculation completed: R=" << avgRed << ", G=" << avgGreen << ", B=" << avgBlue;
+        }
+        
+        // Update RGB values (always, no need for conditional check)
+        if (rgbValueLabel) {
                 rgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
                 
-                // 배경색 설정 (평균 RGB 값)
+            // Set background color to average RGB
                 QPalette palette = rgbValueLabel->palette();
                 palette.setColor(QPalette::Window, QColor(avgRed, avgGreen, avgBlue));
                 palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
                 rgbValueLabel->setPalette(palette);
                 rgbValueLabel->setAutoFillBackground(true);
+        }
+        
+        // Process selected cell if there is one
+        qDebug() << "Checking selected cell: " << selectedCell.first << ", " << selectedCell.second;
+        if (selectedCell.first >= 0 && selectedCell.first < 3 && 
+            selectedCell.second >= 0 && selectedCell.second < 3 && 
+            !bingoStatus[selectedCell.first][selectedCell.second]) {
+            
+            // Check color similarity between camera and selected cell
+            QColor cameraColor(avgRed, avgGreen, avgBlue);
+            QColor cellColor = getCellColor(selectedCell.first, selectedCell.second);
+            
+            // Calculate color distance
+            int distance = colorDistance(cameraColor, cellColor);
+            qDebug() << "Color distance: " << distance << " (threshold: 20)";
+            
+            // Check if bingoCells array element is valid
+            if (bingoCells[selectedCell.first][selectedCell.second]) {
+                qDebug() << "Setting X mark on cell";
+                
+                // Make sure xImage is valid
+                if (xImage.isNull()) {
+                    qDebug() << "xImage is null, creating new one";
+                    xImage = createXImage();
+                }
+                
+                // Check cell size before scaling
+                QSize cellSize = bingoCells[selectedCell.first][selectedCell.second]->size();
+                if (cellSize.width() > 20 && cellSize.height() > 20) {
+                    bingoCells[selectedCell.first][selectedCell.second]->setAlignment(Qt::AlignCenter);
+                    bingoCells[selectedCell.first][selectedCell.second]->setContentsMargins(10, 10, 10, 10);
+                    
+                    // Create a scaled copy of xImage (2/3 of cell size)
+                    QPixmap scaledX = xImage.scaled(
+                        cellSize.width() * 2/3,  // 2/3 of cell width
+                        cellSize.height() * 2/3, // 2/3 of cell height  
+                        Qt::KeepAspectRatio,
+                        Qt::SmoothTransformation
+                    );
+                    
+                    // Set the pixmap if scaling was successful
+                    if (!scaledX.isNull()) {
+                        bingoCells[selectedCell.first][selectedCell.second]->setPixmap(scaledX);
+                        qDebug() << "X mark successfully set";
+                    }
+                    else {
+                        qDebug() << "ERROR: Failed to scale X image";
+                    }
+                }
+                else {
+                    qDebug() << "WARNING: Cell size too small for X mark: " << cellSize;
+                }
+            }
+            
+            // If color distance is below threshold, mark as successful match
+            const int THRESHOLD = 20; // 30 -> 20으로 임계값 낮춤
+            if (distance <= THRESHOLD) {
+                qDebug() << "Color match successful! Processing bingo";
+                bingoStatus[selectedCell.first][selectedCell.second] = true;
+                updateCellStyle(selectedCell.first, selectedCell.second);
+                
+                // Reset selection
+                selectedCell = qMakePair(-1, -1);
+                
+                // Stop camera
+                stopCamera();
+                
+                // Update bingo score
+                updateBingoScore();
+                
+                // Update status message for successful match
+                statusMessageLabel->setText("Great job! Perfect color match!");
+                
+                // 1초 후에 메시지 변경하는 타이머 설정 -> 2초로 변경
+                QTimer::singleShot(2000, this, [this]() {
+                    statusMessageLabel->setText("Please select a cell to match colors");
+                });
+            } else {
+                // Update status message based on color distance
+                if (!statusMessageLabel->text().contains("don't match")) {
+                    statusMessageLabel->setText("The colors don't match. Keep trying!");
+                }
             }
         }
         
-        // QLabel에 이미지 표시 (크기 변경 없이)
-        cameraView->setPixmap(scaledPixmap);
+        // Display the final image with circle
+        cameraView->setPixmap(paintPixmap);
+        qDebug() << "Camera view updated successfully";
     }
+    catch (const std::exception& e) {
+        qDebug() << "ERROR: Exception in updateCameraFrame: " << e.what();
+    }
+    catch (...) {
+        qDebug() << "ERROR: Unknown exception in updateCameraFrame";
+    }
+    
+    qDebug() << "updateCameraFrame completed";
 }
 
 void BingoWidget::calculateAverageRGB(const QImage &image, int centerX, int centerY, int radius) {
-    long long sumR = 0, sumG = 0, sumB = 0;
+    qDebug() << "calculateAverageRGB started: center=(" << centerX << "," << centerY << "), radius=" << radius;
+    
+    // Return immediately if image is invalid
+    if (image.isNull() || radius <= 0) {
+        qDebug() << "Image is invalid or radius is less than or equal to 0.";
+        avgRed = avgGreen = avgBlue = 0;
+        return;
+    }
+    
+    // Adjust center point to avoid exceeding image boundaries
+    int safeX = qBound(radius, centerX, image.width() - radius);
+    int safeY = qBound(radius, centerY, image.height() - radius);
+    
+    qDebug() << "Safe center point: (" << safeX << "," << safeY << ")";
+    
+    // Initialize pixel sums and count
+    long totalR = 0, totalG = 0, totalB = 0;
     int pixelCount = 0;
     
-    // 원 영역을 효율적으로 스캔하기 위해 원을 포함하는 사각형 영역만 처리
-    int startX = qMax(centerX - radius, 0);
-    int startY = qMax(centerY - radius, 0);
-    int endX = qMin(centerX + radius, image.width() - 1);
-    int endY = qMin(centerY + radius, image.height() - 1);
-    
-    // 사각형 내부의 각 픽셀에 대해
-    for (int y = startY; y <= endY; y++) {
-        for (int x = startX; x <= endX; x++) {
-            // 픽셀이 원 안에 있는지 확인 (피타고라스 정리 사용)
-            int distX = x - centerX;
-            int distY = y - centerY;
-            int distSquared = distX * distX + distY * distY;
+    // Check pixels inside the circle
+    for (int y = safeY - radius; y < safeY + radius; y++) {
+        for (int x = safeX - radius; x < safeX + radius; x++) {
+            // Check if point is inside circle (using circle equation)
+            int dx = x - safeX;
+            int dy = y - safeY;
+            int distSquared = dx*dx + dy*dy;
             
-            if (distSquared <= radius * radius) {
-                // 원 안에 있는 픽셀의 RGB 값 추출 및 합산
-                QRgb pixel = image.pixel(x, y);
-                sumR += qRed(pixel);
-                sumG += qGreen(pixel);
-                sumB += qBlue(pixel);
+            if (distSquared <= radius*radius) {
+                // Safety check: verify point is within image boundaries
+                if (x >= 0 && x < image.width() && y >= 0 && y < image.height()) {
+                    QColor pixel(image.pixel(x, y));
+                    totalR += pixel.red();
+                    totalG += pixel.green();
+                    totalB += pixel.blue();
                 pixelCount++;
+                }
             }
         }
     }
     
-    // 픽셀이 없는 경우 예외 처리
+    // Calculate averages
     if (pixelCount > 0) {
-        // 평균값 계산
-        avgRed = sumR / pixelCount;
-        avgGreen = sumG / pixelCount;
-        avgBlue = sumB / pixelCount;
-        
-        // 추출된 RGB 값에 붉은 기 추가 (R 증가, G/B 감소)
-        avgRed = qBound(0, (int)(avgRed * 1.15), 255);   // 빨간색 15% 증가
-        avgGreen = qBound(0, (int)(avgGreen * 0.92), 255); // 녹색 8% 감소
-        avgBlue = qBound(0, (int)(avgBlue * 0.92), 255);  // 파란색 8% 감소
+        avgRed = totalR / pixelCount;
+        avgGreen = totalG / pixelCount;
+        avgBlue = totalB / pixelCount;
     } else {
         avgRed = avgGreen = avgBlue = 0;
     }
+    
+    qDebug() << "calculateAverageRGB completed: Average RGB=(" << avgRed << "," << avgGreen << "," << avgBlue 
+             << "), pixel count=" << pixelCount;
 }
 
 void BingoWidget::handleCameraDisconnect() {
     cameraView->setText("Camera disconnected");
     qDebug() << "Camera disconnected";
     
-    // 버튼 상태 업데이트
-    startButton->setEnabled(false);
-    stopButton->setEnabled(false);
-    captureButton->setEnabled(false);
+    // 플래그 설정만 업데이트 (버튼 참조 제거)
     isCapturing = false;
+    
+    // 선택된 셀이 있으면 선택 해제
+    if (selectedCell.first >= 0 && selectedCell.second >= 0) {
+        deselectCell();
+    }
 }
 
 void BingoWidget::onCircleSliderValueChanged(int value) {
-    // 원 크기 값 업데이트
     circleRadius = value;
     circleValueLabel->setText(QString::number(value) + "%");
 }
 
 void BingoWidget::onCircleCheckBoxToggled(bool checked) {
-    // 원 표시 여부 설정
-    showCircle = checked;
-    circleSlider->setEnabled(checked);
-    
-    // RGB 값 표시 관련 UI 요소 활성화/비활성화
-    if (checked) {
-        rgbCheckBox->setEnabled(true);
-        rgbValueLabel->setEnabled(showRgbValues);
-    } else {
-        rgbCheckBox->setEnabled(false);
-        rgbValueLabel->setEnabled(false);
-    }
+    // 사용하지 않음 (항상 표시)
+    // showCircle 변수는 그대로 true로 유지
 }
 
 void BingoWidget::onRgbCheckBoxToggled(bool checked) {
-    showRgbValues = checked;
-    rgbValueLabel->setEnabled(checked);
+    // Function not used anymore since RGB values are always shown
 }
 
 void BingoWidget::restartCamera()
@@ -648,135 +942,15 @@ void BingoWidget::restartCamera()
     }
 }
 
-void BingoWidget::onStartButtonClicked() {
-    // 카메라 캡처 시작
-    if (!isCapturing) {
-        if (!camera->startCapturing()) {
-            QMessageBox::critical(this, "Error", "Failed to start capture");
-            return;
-        }
-        
-        // 버튼 상태 업데이트
-        startButton->setEnabled(false);
-        stopButton->setEnabled(true);
-        
-        // 셀이 선택되어 있으면 캡처 버튼 활성화
-        if (selectedCell.first >= 0)
-            captureButton->setEnabled(true);
-        
-        // 플래그 설정
-        isCapturing = true;
-        
-        // 재시작 타이머 시작
-        cameraRestartTimer->start();
-    }
-}
-
-void BingoWidget::onStopButtonClicked() {
-    // 카메라 캡처 중지
-    if (isCapturing) {
-        // 카메라 캡처 중지
-        camera->stopCapturing();
-        
-        // 버튼 상태 업데이트
-        startButton->setEnabled(true);
-        stopButton->setEnabled(false);
-        captureButton->setEnabled(false);
-        
-        // 플래그 설정
-        isCapturing = false;
-        
-        // 재시작 타이머 중지
-        cameraRestartTimer->stop();
-        
-        // 마지막 프레임 유지
-        cameraView->setText("Click 'Start' button to start the camera");
-    }
-}
-
-void BingoWidget::onCaptureButtonClicked() {
-    // 선택된 셀이 없으면 무시
-    if (selectedCell.first < 0 || selectedCell.second < 0 || !isCapturing) {
-        return;
-    }
-    
-    int row = selectedCell.first;
-    int col = selectedCell.second;
-    
-    // 이미 O로 표시된 칸이면 무시 (추가 안전장치)
-    if (bingoStatus[row][col]) {
-        return;
-    }
-    
-    // 카메라 색상과 선택된 셀 색상의 유사도 검사
-    QColor cameraColor(avgRed, avgGreen, avgBlue);
-    QColor cellColor = getCellColor(row, col);
-    
-    // 색상 거리 계산 (값이 작을수록 유사)
-    int distance = colorDistance(cameraColor, cellColor);
-    
-    // 임계값 축소 (40 -> 30) - 더 엄격한 유사도 판정
-    const int THRESHOLD = 30; // HSV 기반 거리가 30 이하면 유사하다고 판단
-    
-    qDebug() << "Color distance:" << distance << "(Threshold:" << THRESHOLD << ")";
-    
-    if (distance <= THRESHOLD) {
-        // 색상이 유사하면 O 표시
-        bingoStatus[row][col] = true;
-        updateCellStyle(row, col);
-        
-        // 선택 상태 초기화
-        selectedCell = qMakePair(-1, -1);
-        
-        // 빙고 점수 업데이트
-        updateBingoScore();
-    } else {
-        // 경계선 스타일 생성
-        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-        
-        if (row == 2) {
-            borderStyle += " border-bottom: 1px solid black;";
-        }
-        if (col == 2) {
-            borderStyle += " border-right: 1px solid black;";
-        }
-        
-        // 배경색 스타일 설정
-        QString style = QString("background-color: %1; %2")
-                       .arg(cellColors[row][col].name())
-                       .arg(borderStyle);
-        
-        bingoCells[row][col]->setStyleSheet(style);
-        
-        // 이미지 표시
-        bingoCells[row][col]->clear();
-        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
-        
-        // X 이미지 여백도 동일하게 조정
-        int margin = 10; // 여백 축소 (15→10)
-        bingoCells[row][col]->setContentsMargins(margin, margin, margin, margin);
-        
-        // 이미지 크기도 더 크게 조정
-        QPixmap xImage = createXImage();
-        QPixmap scaledX = xImage.scaled(
-            bingoCells[row][col]->width() - 20, // 여백 축소 (30→20)
-            bingoCells[row][col]->height() - 20, // 여백 축소 (30→20)
-            Qt::KeepAspectRatio,
-            Qt::SmoothTransformation
-        );
-        bingoCells[row][col]->setPixmap(scaledX);
-        
-        // 1초 후 X를 지우는 타이머 시작
-        fadeXTimer->start(1000);
-    }
-}
-
 void BingoWidget::clearXMark() {
     // X 표시가 있는 셀이 있으면 원래대로 되돌리기
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
+            // deprecated 경고 수정: pixmap(Qt::ReturnByValue) 사용
+            QPixmap cellPixmap = bingoCells[row][col]->pixmap(Qt::ReturnByValue);
+            
             // pixmap이 설정되어 있고, 체크되지 않은 셀인 경우
-            if (bingoCells[row][col]->pixmap() != nullptr && !bingoStatus[row][col]) {
+            if (!cellPixmap.isNull() && !bingoStatus[row][col]) {
                 updateCellStyle(row, col);
             }
         }
@@ -876,40 +1050,98 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
     if (successLabel) {
         successLabel->setGeometry(0, 0, width(), height());
     }
+    
+    // Back 버튼 위치 업데이트
+    updateBackButtonPosition();
 }
-
 
 void BingoWidget::onBackButtonClicked() {
     emit backToMainRequested();
+}
 
 QPixmap BingoWidget::createXImage() {
-    QPixmap xImage(80, 80);
-    xImage.fill(Qt::transparent);
-    QPainter painter(&xImage);
+    qDebug() << "Creating optimized pixelated X mark";
     
-    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
+    // Create X image with transparent background
+    QPixmap xImg(100, 100);
+    xImg.fill(Qt::transparent);
+    
+    QPainter painter(&xImg);
+    // Disable antialiasing for pixelated look
     painter.setRenderHint(QPainter::Antialiasing, false);
     
-    // 흰색 픽셀로 X 그리기
+    // Use white color
     painter.setPen(Qt::NoPen);
-    painter.setBrush(Qt::white); // 흰색으로 설정
+    painter.setBrush(QBrush(Qt::white));
     
-    // 왼쪽 위에서 오른쪽 아래로 가는 대각선
-    painter.drawRect(16, 16, 8, 8);
-    painter.drawRect(24, 24, 8, 8);
-    painter.drawRect(32, 32, 8, 8);
-    painter.drawRect(40, 40, 8, 8);
-    painter.drawRect(48, 48, 8, 8);
-    painter.drawRect(56, 56, 8, 8);
+    // Define pixel size for a cleaner look
+    const int pixelSize = 5;
     
-    // 오른쪽 위에서 왼쪽 아래로 가는 대각선
-    painter.drawRect(56, 16, 8, 8);
-    painter.drawRect(48, 24, 8, 8);
-    painter.drawRect(40, 32, 8, 8);
-    painter.drawRect(32, 40, 8, 8);
-    painter.drawRect(24, 48, 8, 8);
-    painter.drawRect(16, 56, 8, 8);
+    // Define center point and size for a 2/3 cell size X
+    const int center = 50; // Center of the 100x100 pixmap
+    const int xSize = 33;  // Will make X extend ~33px from center (2/3 of size)
     
-    return xImage;
->>>>>>> origin/main
+    // Draw first diagonal (top-left to bottom-right)
+    for (int i = -xSize; i <= xSize; i++) {
+        int x = center + i;
+        int y = center + i;
+        painter.drawRect(x, y, pixelSize, pixelSize);
+    }
+    
+    // Draw second diagonal (top-right to bottom-left)
+    for (int i = -xSize; i <= xSize; i++) {
+        int x = center + i;
+        int y = center - i;
+        painter.drawRect(x, y, pixelSize, pixelSize);
+    }
+    
+    // Thicken the diagonals by adding adjacent pixels
+    for (int i = -xSize; i <= xSize; i++) {
+        // Thicken first diagonal
+        int x1 = center + i;
+        int y1 = center + i;
+        painter.drawRect(x1 - pixelSize, y1, pixelSize, pixelSize);
+        
+        // Thicken second diagonal
+        int x2 = center + i;
+        int y2 = center - i;
+        painter.drawRect(x2 - pixelSize, y2, pixelSize, pixelSize);
+    }
+    
+    qDebug() << "X mark created: properly centered, 2/3 cell size";
+    return xImg;
 }
+
+// Add a separate color correction function
+QColor BingoWidget::correctBluecast(const QColor &color) {
+    qDebug() << "Correcting color cast: input RGB=" << color.red() << "," << color.green() << "," << color.blue();
+    
+    // Reduce red factor
+    double redFactor = 0.85;
+    
+    // Boost green and blue
+    int gbBoost = 5;
+    
+    // Adjust color channels
+    int r = qBound(0, static_cast<int>(color.red() * redFactor), 255);
+    int g = qBound(0, color.green() + gbBoost, 255);
+    int b = qBound(0, color.blue() + gbBoost, 255);
+    
+    QColor corrected(r, g, b);
+    qDebug() << "Corrected color: RGB=" << corrected.red() << "," << corrected.green() << "," << corrected.blue();
+    return corrected;
+}
+
+void BingoWidget::updateBackButtonPosition() {
+    if (backButton) {
+        // 화면 우측 하단에서 약간 떨어진 위치에 배치
+        int margin = 20;
+        backButton->move(width() - backButton->width() - margin, 
+                         height() - backButton->height() - margin);
+        
+        // 버튼을 맨 위로 올림
+        backButton->raise();
+    }
+}
+
+
