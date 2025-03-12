@@ -881,6 +881,7 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
 
 void BingoWidget::onBackButtonClicked() {
     emit backToMainRequested();
+}
 
 QPixmap BingoWidget::createXImage() {
     QPixmap xImage(80, 80);
@@ -911,5 +912,4 @@ QPixmap BingoWidget::createXImage() {
     painter.drawRect(16, 56, 8, 8);
     
     return xImage;
->>>>>>> origin/main
 }
