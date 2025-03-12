@@ -11,25 +11,50 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     avgRed(0),
     avgGreen(0),
     avgBlue(0),
-    showRgbValues(true)
+    showRgbValues(true),
+    selectedCell(-1, -1),
+    bingoCount(0)
 {
     // 메인 레이아웃 생성 (가로 분할)
     mainLayout = new QHBoxLayout(this);
     
     // 왼쪽 부분: 빙고 영역
     bingoArea = new QWidget(this);
-    gridLayout = new QGridLayout(bingoArea);
+    QVBoxLayout* bingoVLayout = new QVBoxLayout(bingoArea);
+    
+    // 빙고 점수 표시 레이블
+    bingoScoreLabel = new QLabel("빙고: 0줄", bingoArea);
+    bingoScoreLabel->setAlignment(Qt::AlignCenter);
+    QFont scoreFont = bingoScoreLabel->font();
+    scoreFont.setPointSize(14);
+    scoreFont.setBold(true);
+    bingoScoreLabel->setFont(scoreFont);
+    bingoScoreLabel->setMinimumHeight(40);
+    
+    bingoVLayout->addWidget(bingoScoreLabel);
+    
+    // 빙고 그리드 생성
+    gridLayout = new QGridLayout();
+    gridLayout->setSpacing(0); // 셀 간격 제거 - 표 형태로 보이게
 
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
             bingoCells[row][col] = new QLabel(bingoArea);
             bingoCells[row][col]->setFixedSize(100, 100);
             bingoCells[row][col]->setAutoFillBackground(true);
+            bingoCells[row][col]->setFrameShape(QFrame::Box); // 테두리 추가
+            bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+            bingoCells[row][col]->setStyleSheet("border: 1px solid black;"); // 경계선 추가
+            
+            // 마우스 클릭 이벤트 활성화
+            bingoCells[row][col]->installEventFilter(this);
+            
+            // 빙고 상태 초기화 (체크 안됨)
+            bingoStatus[row][col] = false;
+            
             gridLayout->addWidget(bingoCells[row][col], row, col);
         }
     }
-
-    bingoArea->setLayout(gridLayout);
     
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);
@@ -43,6 +68,7 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     cameraView->setText("Camera connecting...");
     cameraView->setFrameShape(QFrame::Box);
     cameraView->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    bingoVLayout->addLayout(gridLayout);
     
     // 카메라 컨트롤
     QWidget *controlsWidget = new QWidget(cameraArea);
@@ -50,7 +76,9 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     startButton = new QPushButton("Start", controlsWidget);
     stopButton = new QPushButton("Stop", controlsWidget);
+    captureButton = new QPushButton("Capture", controlsWidget);
     stopButton->setEnabled(false);
+    captureButton->setEnabled(false); // 초기에는 비활성화
     
     QFont buttonFont = startButton->font();
     buttonFont.setPointSize(14);
@@ -61,6 +89,7 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     controlsLayout->addWidget(startButton);
     controlsLayout->addWidget(stopButton);
+    controlsLayout->addWidget(captureButton);
     controlsWidget->setLayout(controlsLayout);
     
     // 원 설정 위젯
@@ -130,7 +159,12 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     setLayout(mainLayout);
     
-    // 빙고 셀에 랜덤 색상 생성
+    // X 표시 사라지는 타이머 초기화
+    fadeXTimer = new QTimer(this);
+    fadeXTimer->setSingleShot(true);
+    connect(fadeXTimer, &QTimer::timeout, this, &BingoWidget::clearXMark);
+    
+    // 빙고 셀에 낮은 채도의 랜덤 색상 생성
     generateRandomColors();
     
     // 카메라 초기화
@@ -146,6 +180,12 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     connect(rgbCheckBox, &QCheckBox::toggled, this, &BingoWidget::onRgbCheckBoxToggled);
     connect(startButton, &QPushButton::clicked, this, &BingoWidget::onStartButtonClicked);
     connect(stopButton, &QPushButton::clicked, this, &BingoWidget::onStopButtonClicked);
+    connect(captureButton, &QPushButton::clicked, this, &BingoWidget::onCaptureButtonClicked);
+    
+    // 카메라 재시작 타이머 추가
+    cameraRestartTimer = new QTimer(this);
+    cameraRestartTimer->setInterval(30 * 60 * 1000); // 30분마다 재시작
+    connect(cameraRestartTimer, &QTimer::timeout, this, &BingoWidget::restartCamera);
     
     // 카메라 열기 및 시작 시도
     if (camera->openCamera("/dev/video4")) {
@@ -166,24 +206,117 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
 }
 
 BingoWidget::~BingoWidget() {
+    if (cameraRestartTimer) {
+        cameraRestartTimer->stop();
+        delete cameraRestartTimer;
+    }
+    
+    if (fadeXTimer) {
+        fadeXTimer->stop();
+        delete fadeXTimer;
+    }
+    
     if (camera) {
         camera->stopCapturing();
         camera->closeCamera();
     }
 }
 
+bool BingoWidget::eventFilter(QObject *obj, QEvent *event) {
+    // 빙고 셀 클릭 감지
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            if (obj == bingoCells[row][col] && event->type() == QEvent::MouseButtonPress) {
+                // 이전 선택된 셀의 스타일 원래대로
+                if (selectedCell.first >= 0 && selectedCell.second >= 0) {
+                    updateCellStyle(selectedCell.first, selectedCell.second);
+                }
+                
+                // 새 셀 선택
+                selectedCell = qMakePair(row, col);
+                
+                // 선택된 셀 강조 표시
+                QString style = "border: 3px solid red; background-color: " + 
+                                getCellColor(row, col).name() + ";";
+                bingoCells[row][col]->setStyleSheet(style);
+                
+                // 카메라가 켜져있고 셀이 선택되었을 때만 캡처 버튼 활성화
+                captureButton->setEnabled(isCapturing);
+                
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+// 채도가 낮은 랜덤 색상 생성
 void BingoWidget::generateRandomColors() {
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
-            int r = QRandomGenerator::global()->bounded(256);
-            int g = QRandomGenerator::global()->bounded(256);
-            int b = QRandomGenerator::global()->bounded(256);
-
-            QPalette palette = bingoCells[row][col]->palette();
-            palette.setColor(QPalette::Window, QColor(r, g, b));
-            bingoCells[row][col]->setPalette(palette);
+            // HSV 색상 모델을 사용하여 채도가 적당한 색상 생성
+            int hue = QRandomGenerator::global()->bounded(360);  // 0-359 범위의 색조
+            int saturation = QRandomGenerator::global()->bounded(70, 160);  // 70-160 범위의 채도 (너무 높지 않음)
+            int value = QRandomGenerator::global()->bounded(180, 240);  // 180-240 범위의 명도 (너무 어둡거나 밝지 않음)
+            
+            QColor cellColor = QColor::fromHsv(hue, saturation, value);
+            cellColors[row][col] = cellColor;
+            
+            // 배경색 적용
+            updateCellStyle(row, col);
+            
+            // 셀 위치 표시
+            bingoCells[row][col]->setText(QString("Cell %1,%2").arg(row+1).arg(col+1));
+            bingoCells[row][col]->setStyleSheet(
+                QString("background-color: %1; color: %2; border: 1px solid black;")
+                .arg(cellColor.name())
+                .arg(isColorBright(cellColor) ? "black" : "white")
+            );
         }
     }
+}
+
+void BingoWidget::updateCellStyle(int row, int col) {
+    QString style;
+    
+    if (bingoStatus[row][col]) {
+        // O 표시가 있는 경우
+        style = QString("background-color: %1; color: %2; border: 1px solid black; "
+                      "font-size: 60px; font-weight: bold;")
+                .arg(cellColors[row][col].name())
+                .arg(isColorBright(cellColors[row][col]) ? "black" : "white");
+        bingoCells[row][col]->setText("O");
+    } else {
+        // 기본 색상 (셀 위치 표시)
+        style = QString("background-color: %1; color: %2; border: 1px solid black;")
+                .arg(cellColors[row][col].name())
+                .arg(isColorBright(cellColors[row][col]) ? "black" : "white");
+        bingoCells[row][col]->setText(getCellColorName(row, col));
+    }
+    
+    bingoCells[row][col]->setStyleSheet(style);
+}
+
+QColor BingoWidget::getCellColor(int row, int col) {
+    return cellColors[row][col];
+}
+
+QString BingoWidget::getCellColorName(int row, int col) {
+    return QString("Cell %1,%2").arg(row+1).arg(col+1);
+}
+
+int BingoWidget::colorDistance(const QColor &c1, const QColor &c2) {
+    // 색상 간의 유클리드 거리 계산
+    int rdiff = c1.red() - c2.red();
+    int gdiff = c1.green() - c2.green();
+    int bdiff = c1.blue() - c2.blue();
+    
+    return rdiff*rdiff + gdiff*gdiff + bdiff*bdiff;
+}
+
+bool BingoWidget::isColorBright(const QColor &color) {
+    // YIQ 공식으로 색상의 밝기 확인 (텍스트 색상 결정용)
+    return ((color.red() * 299) + (color.green() * 587) + (color.blue() * 114)) / 1000 > 128;
 }
 
 void BingoWidget::updateCameraFrame() {
@@ -287,6 +420,7 @@ void BingoWidget::handleCameraDisconnect() {
     // 버튼 상태 업데이트
     startButton->setEnabled(false);
     stopButton->setEnabled(false);
+    captureButton->setEnabled(false);
     isCapturing = false;
 }
 
@@ -316,6 +450,26 @@ void BingoWidget::onRgbCheckBoxToggled(bool checked) {
     rgbValueLabel->setEnabled(checked);
 }
 
+void BingoWidget::restartCamera()
+{
+    if (isCapturing) {
+        qDebug() << "정기적인 카메라 재초기화 수행...";
+        // 카메라 중지
+        camera->stopCapturing();
+        
+        // 잠시 대기
+        QThread::msleep(500);
+        
+        // 카메라 재시작
+        if (!camera->startCapturing()) {
+            QMessageBox::warning(this, "Warning", "Camera restart failed. Will try again later.");
+            return;
+        }
+        
+        qDebug() << "카메라 재초기화 완료!";
+    }
+}
+
 void BingoWidget::onStartButtonClicked() {
     // 카메라 캡처 시작
     if (!isCapturing) {
@@ -328,8 +482,15 @@ void BingoWidget::onStartButtonClicked() {
         startButton->setEnabled(false);
         stopButton->setEnabled(true);
         
+        // 셀이 선택되어 있으면 캡처 버튼 활성화
+        if (selectedCell.first >= 0)
+            captureButton->setEnabled(true);
+        
         // 플래그 설정
         isCapturing = true;
+        
+        // 재시작 타이머 시작
+        cameraRestartTimer->start();
     }
 }
 
@@ -342,11 +503,104 @@ void BingoWidget::onStopButtonClicked() {
         // 버튼 상태 업데이트
         startButton->setEnabled(true);
         stopButton->setEnabled(false);
+        captureButton->setEnabled(false);
         
         // 플래그 설정
         isCapturing = false;
         
+        // 재시작 타이머 중지
+        cameraRestartTimer->stop();
+        
         // 마지막 프레임 유지
         cameraView->setText("Click 'Start' button to start the camera");
+    }
+}
+
+void BingoWidget::onCaptureButtonClicked() {
+    // 선택된 셀이 없으면 무시
+    if (selectedCell.first < 0 || selectedCell.second < 0 || !isCapturing) {
+        return;
+    }
+    
+    int row = selectedCell.first;
+    int col = selectedCell.second;
+    
+    // 카메라 색상과 선택된 셀 색상의 유사도 검사
+    QColor cameraColor(avgRed, avgGreen, avgBlue);
+    QColor cellColor = getCellColor(row, col);
+    
+    // 색상 거리 계산 (값이 작을수록 유사)
+    int distance = colorDistance(cameraColor, cellColor);
+    
+    // 유사도 임계값 (여유있게 설정)
+    const int THRESHOLD = 20000; // RGB 거리 제곱의 합이 이 값보다 작으면 유사하다고 판단
+    
+    if (distance < THRESHOLD) {
+        // 색상이 유사하면 O 표시
+        bingoStatus[row][col] = true;
+        updateCellStyle(row, col);
+        
+        // 빙고 점수 업데이트
+        updateBingoScore();
+    } else {
+        // 색상이 다르면 X 표시 (1초 후 사라짐)
+        QString style = QString("background-color: %1; color: red; border: 1px solid black; "
+                              "font-size: 60px; font-weight: bold;")
+                          .arg(cellColors[row][col].name());
+        bingoCells[row][col]->setStyleSheet(style);
+        bingoCells[row][col]->setText("X");
+        
+        // 1초 후 X를 지우는 타이머 시작
+        fadeXTimer->start(1000);
+    }
+}
+
+void BingoWidget::clearXMark() {
+    // X 표시가 있는 셀이 있으면 원래대로 되돌리기
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            if (bingoCells[row][col]->text() == "X") {
+                updateCellStyle(row, col);
+            }
+        }
+    }
+}
+
+void BingoWidget::updateBingoScore() {
+    bingoCount = 0;
+    
+    // 가로줄 확인
+    for (int row = 0; row < 3; ++row) {
+        if (bingoStatus[row][0] && bingoStatus[row][1] && bingoStatus[row][2]) {
+            bingoCount++;
+        }
+    }
+    
+    // 세로줄 확인
+    for (int col = 0; col < 3; ++col) {
+        if (bingoStatus[0][col] && bingoStatus[1][col] && bingoStatus[2][col]) {
+            bingoCount++;
+        }
+    }
+    
+    // 대각선 확인 (좌상단 -> 우하단)
+    if (bingoStatus[0][0] && bingoStatus[1][1] && bingoStatus[2][2]) {
+        bingoCount++;
+    }
+    
+    // 대각선 확인 (우상단 -> 좌하단)
+    if (bingoStatus[0][2] && bingoStatus[1][1] && bingoStatus[2][0]) {
+        bingoCount++;
+    }
+    
+    // 빙고 점수 표시 업데이트
+    bingoScoreLabel->setText(QString("빙고: %1줄").arg(bingoCount));
+    
+    // 빙고 완성시 축하 메시지
+    if (bingoCount > 0) {
+        // 빙고 완성 효과 (배경색 변경 등)
+        bingoScoreLabel->setStyleSheet("color: red; font-weight: bold;");
+    } else {
+        bingoScoreLabel->setStyleSheet("");
     }
 }
