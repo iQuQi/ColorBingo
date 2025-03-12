@@ -25,6 +25,9 @@ public:
     ~BingoWidget();
     bool eventFilter(QObject *obj, QEvent *event) override;
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void updateCameraFrame();
     void handleCameraDisconnect();
@@ -36,6 +39,9 @@ private slots:
     void restartCamera();
     void onCaptureButtonClicked();
     void clearXMark();
+    void showSuccessMessage();
+    void hideSuccessAndReset();
+    void resetGame();
 
 private:
     // 빙고 관련 함수들
@@ -101,6 +107,10 @@ private:
     // 타이머
     QTimer *cameraRestartTimer;  // 카메라 재시작 타이머
     QTimer *fadeXTimer;         // X 표시 사라지는 타이머
+
+    // 성공 메시지 관련 멤버
+    QLabel *successLabel;
+    QTimer *successTimer;
 };
 
 #endif // BINGOWIDGET_H
