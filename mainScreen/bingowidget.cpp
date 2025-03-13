@@ -289,16 +289,23 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     
     qDebug() << "BingoWidget constructor completed";
 
-    // 대신 아래 코드 추가
+    // Back 버튼 설정
     backButton = new QPushButton("Back", this);
     backButton->setFixedSize(80, 30); // 버튼 크기 고정
     connect(backButton, &QPushButton::clicked, this, &BingoWidget::onBackButtonClicked);
 
-    // 스타일시트로 버튼 디자인 개선 (선택사항)
-    backButton->setStyleSheet("QPushButton { background-color: #4a86e8; color: white; "
-                             "border-radius: 4px; font-weight: bold; } "
-                             "QPushButton:hover { background-color: #3a76d8; }");
-                             
+    // Restart 버튼 추가
+    restartButton = new QPushButton("Restart", this);
+    restartButton->setFixedSize(80, 30); // 버튼 크기 고정
+    connect(restartButton, &QPushButton::clicked, this, &BingoWidget::onRestartButtonClicked);
+
+    // 두 버튼에 동일한 스타일시트 적용
+    QString buttonStyle = "QPushButton { background-color: #4a86e8; color: white; "
+                         "border-radius: 4px; font-weight: bold; } "
+                         "QPushButton:hover { background-color: #3a76d8; }";
+    backButton->setStyleSheet(buttonStyle);
+    restartButton->setStyleSheet(buttonStyle);
+
     // 초기 위치 설정
     updateBackButtonPosition();
 }
@@ -1105,15 +1112,36 @@ QColor BingoWidget::correctBluecast(const QColor &color) {
 }
 
 void BingoWidget::updateBackButtonPosition() {
-    if (backButton) {
+    if (backButton && restartButton) {
         // 화면 우측 하단에서 약간 떨어진 위치에 배치
         int margin = 20;
+        int buttonSpacing = 10; // 버튼 사이 간격
+        
+        // Back 버튼 위치
         backButton->move(width() - backButton->width() - margin, 
                          height() - backButton->height() - margin);
         
-        // 버튼을 맨 위로 올림
+        // Restart 버튼 위치 (Back 버튼 왼쪽)
+        restartButton->move(width() - backButton->width() - margin - buttonSpacing - restartButton->width(),
+                            height() - restartButton->height() - margin);
+        
+        // 버튼들을 맨 위로 올림
         backButton->raise();
+        restartButton->raise();
     }
+}
+
+void BingoWidget::onRestartButtonClicked() {
+    // 게임 진행 중 확인 (카메라가 작동 중이면 중지)
+    if (isCapturing) {
+        stopCamera();
+    }
+    
+    // 게임 초기화
+    resetGame();
+    
+    // 상태 메시지 업데이트
+    statusMessageLabel->setText("Game restarted! Please select a cell to match colors");
 }
 
 

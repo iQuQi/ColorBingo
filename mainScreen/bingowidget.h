@@ -44,6 +44,7 @@ private slots:
     void resetGame();
     void restartCamera();
     void onBackButtonClicked();
+    void onRestartButtonClicked();
 
 private:
     // 빙고 관련 함수들
@@ -130,6 +131,7 @@ private:
     QLabel *statusMessageLabel; // Label for displaying game status messages
 
     QPushButton* backButton; // Back 버튼
+    QPushButton* restartButton; // Restart 버튼
 
     void updateBackButtonPosition();
 };
