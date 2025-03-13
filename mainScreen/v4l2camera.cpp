@@ -113,9 +113,9 @@ void V4L2Camera::initDevice()
         qDebug() << "VIDIOC_G_PARM error:" << strerror(errno);
     } 
     else if (streamparm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
-        // Set frame rate to 30fps (time interval = 1second/fps)
+        // Set frame rate to 45fps (time interval = 1second/fps)
         streamparm.parm.capture.timeperframe.numerator = 1;
-        streamparm.parm.capture.timeperframe.denominator = 30;
+        streamparm.parm.capture.timeperframe.denominator = 45;
         
         if (xioctl(fd, VIDIOC_S_PARM, &streamparm) == -1) {
             qDebug() << "VIDIOC_S_PARM error:" << strerror(errno);
