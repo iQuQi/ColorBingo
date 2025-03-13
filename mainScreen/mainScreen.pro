@@ -15,11 +15,13 @@ TEMPLATE = app
 SOURCES += main.cpp\
         mainwindow.cpp \
         bingowidget.cpp \
-        v4l2camera.cpp
+        v4l2camera.cpp \
+        webcambutton.cpp
 
 HEADERS  += mainwindow.h \
     bingowidget.h \
-    v4l2camera.h
+    v4l2camera.h \
+    webcambutton.h
 
 FORMS    += mainwindow.ui
 

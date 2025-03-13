@@ -1,2 +1,6 @@
 ColorBingo/build-mainScreen-qt_embedded-Debug/**
+build-mainScreen-qt_embedded-Debug/**
 temp/**
+
+# Qt Creator 사용자 파일
+*.pro.user*

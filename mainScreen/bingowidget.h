@@ -16,6 +16,10 @@
 #include <QPair>
 #include <QPixmap>
 #include <QPushButton>
+#include <QFile>
+#include <QSocketNotifier>
+#include <linux/input.h>
+#include "webcambutton.h"
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -38,12 +42,13 @@ private slots:
     void onCircleSliderValueChanged(int value);
     void onCircleCheckBoxToggled(bool checked);
     void onRgbCheckBoxToggled(bool checked);
+    void onBackButtonClicked();
+    void restartCamera();
+    void onCaptureButtonClicked();
     void clearXMark();
     void showSuccessMessage();
     void hideSuccessAndReset();
     void resetGame();
-    void restartCamera();
-    void onBackButtonClicked();
     void onRestartButtonClicked();
 
 private:
@@ -100,6 +105,11 @@ private:
     QLabel *cameraView;
     V4L2Camera *camera;
     
+    // 컨트롤 버튼
+    QPushButton *startButton;
+    QPushButton *captureButton;  // 캡처 및 중지 버튼으로 역할 변경
+//    QPushButton *backButton;
+    
     // 원 표시 관련 위젯
     QSlider *circleSlider;
     QCheckBox *circleCheckBox;
@@ -117,9 +127,10 @@ private:
     // 성공 메시지 관련 멤버
     QLabel *successLabel;
 
+    QPixmap xImage;
+
     // bearImage
     QPixmap bearImage;
-    QPixmap xImage;
 
     QPixmap createXImage(); // X 이미지 생성 함수
 
@@ -134,6 +145,24 @@ private:
     QPushButton* restartButton; // Restart 버튼
 
     void updateBackButtonPosition();
+
+    // 원 오버레이 관련 변수 추가
+    QPixmap overlayCircle;
+    QTimer *rgbUpdateTimer;
+    
+    // 물리 버튼 관련 멤버 변수 추가
+    // QFile *inputDevice;
+    // QSocketNotifier *notifier;
+
+    // 물리 버튼 초기화 함수 제거
+    // void initWebcamButton();
+    
+    // 대신 WebcamButton 객체 추가
+    WebcamButton *webcamButton;
+
+    // 원 표시 및 RGB 관련 함수
+    void createCircleOverlay(int width, int height);
+    void updateRgbValues();
 };
 
 #endif // BINGOWIDGET_H
