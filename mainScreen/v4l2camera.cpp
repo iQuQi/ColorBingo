@@ -350,7 +350,7 @@ bool V4L2Camera::readFrame()
         return false;
     }
 
-    processImage(buffers[buf.index].start, buf.bytesused);
+    processImage(buffers[buf.index].start, 0);
 
     if (xioctl(fd, VIDIOC_QBUF, &buf) == -1) {
         qDebug() << "VIDIOC_QBUF error:" << strerror(errno);
@@ -360,7 +360,7 @@ bool V4L2Camera::readFrame()
     return true;
 }
 
-void V4L2Camera::processImage(const void *p, int size)
+void V4L2Camera::processImage(const void *p, int /* size */)
 {
     frameMutex.lock();
     yuv422ToRgb888(p, currentFrame);
