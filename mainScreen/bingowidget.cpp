@@ -14,7 +14,8 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     avgBlue(0),
     showRgbValues(true),
     selectedCell(-1, -1),
-    bingoCount(0)
+    bingoCount(0),
+    remainingSeconds(120) // 2분 = 120초 타이머 초기화
 {
     qDebug() << "BingoWidget constructor started";
     
@@ -299,15 +300,37 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     restartButton->setFixedSize(80, 30); // 버튼 크기 고정
     connect(restartButton, &QPushButton::clicked, this, &BingoWidget::onRestartButtonClicked);
 
-    // 두 버튼에 동일한 스타일시트 적용
-    QString buttonStyle = "QPushButton { background-color: #4a86e8; color: white; "
+    // 버튼 스타일 변경 - 진회색 배경으로 수정
+    QString buttonStyle = "QPushButton { background-color: rgba(50, 50, 50, 200); color: white; "
                          "border-radius: 4px; font-weight: bold; } "
-                         "QPushButton:hover { background-color: #3a76d8; }";
+                         "QPushButton:hover { background-color: rgba(70, 70, 70, 220); }";
     backButton->setStyleSheet(buttonStyle);
     restartButton->setStyleSheet(buttonStyle);
 
     // 초기 위치 설정
     updateBackButtonPosition();
+
+    // 타이머 초기화 - 이 부분이 빠져 있었습니다
+    gameTimer = new QTimer(this);
+    gameTimer->setInterval(1000); // 1초마다 업데이트
+    connect(gameTimer, &QTimer::timeout, this, &BingoWidget::onTimerTick);
+    
+    // 타이머 레이블 초기화
+    timerLabel = new QLabel(this);
+    timerLabel->setAlignment(Qt::AlignCenter);
+    timerLabel->setStyleSheet("QLabel { background-color: rgba(50, 50, 50, 200); color: white; "
+                             "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
+    
+    // 실패 메시지 레이블 초기화
+    failLabel = new QLabel("FAIL", this);
+    failLabel->setAlignment(Qt::AlignCenter);
+    failLabel->setStyleSheet("QLabel { background-color: rgba(0, 0, 0, 150); color: red; "
+                           "font-weight: bold; font-size: 72px; }");
+    failLabel->hide(); // 초기에는 숨김
+    
+    // 타이머 디스플레이 초기화 및 시작
+    updateTimerDisplay();
+    gameTimer->start();
 }
 
 BingoWidget::~BingoWidget() {
@@ -329,6 +352,11 @@ BingoWidget::~BingoWidget() {
     if (camera) {
         camera->stopCapturing();
         camera->closeCamera();
+    }
+    
+    if (gameTimer) {
+        gameTimer->stop();
+        delete gameTimer;
     }
 }
 
@@ -1026,7 +1054,7 @@ void BingoWidget::hideSuccessAndReset() {
     resetGame();
 }
 
-// 새로운 함수 추가: 게임 초기화
+// 게임 초기화 함수 수정
 void BingoWidget::resetGame() {
     // 빙고 상태 초기화
     for (int row = 0; row < 3; ++row) {
@@ -1047,6 +1075,9 @@ void BingoWidget::resetGame() {
     
     // 셀 색상 새로 생성
     generateRandomColors();
+    
+    // 타이머 재시작
+    startGameTimer();
 }
 
 // 리사이즈 이벤트 처리 (successLabel 크기 조정)
@@ -1057,6 +1088,14 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
     if (successLabel) {
         successLabel->setGeometry(0, 0, width(), height());
     }
+    
+    // 실패 메시지 레이블 크기 조정
+    if (failLabel) {
+        failLabel->setGeometry(0, 0, width(), height());
+    }
+    
+    // 타이머 위치 업데이트
+    updateTimerPosition();
     
     // Back 버튼 위치 업데이트
     updateBackButtonPosition();
@@ -1084,11 +1123,35 @@ QPixmap BingoWidget::createXImage() {
     // Define pixel size for a cleaner look
     const int pixelSize = 5;
     
-    // Define center point and size for a 2/3 cell size X
+    // Define center point and size
     const int center = 50; // Center of the 100x100 pixmap
     const int xSize = 33;  // Will make X extend ~33px from center (2/3 of size)
     
-    return xImage;
+    // Draw first diagonal (top-left to bottom-right)
+    for (int i = -xSize; i <= xSize; i += pixelSize) {
+        painter.drawRect(center + i - pixelSize/2, center + i - pixelSize/2, pixelSize, pixelSize);
+    }
+    
+    // Draw second diagonal (top-right to bottom-left)
+    for (int i = -xSize; i <= xSize; i += pixelSize) {
+        painter.drawRect(center + i - pixelSize/2, center - i - pixelSize/2, pixelSize, pixelSize);
+    }
+    
+    // Make diagonals thicker for better visibility
+    for (int i = -xSize; i <= xSize; i += pixelSize) {
+        // Thicken first diagonal
+        painter.drawRect(center + i - pixelSize/2, center + i - pixelSize/2 + pixelSize, pixelSize, pixelSize);
+        painter.drawRect(center + i - pixelSize/2 + pixelSize, center + i - pixelSize/2, pixelSize, pixelSize);
+        
+        // Thicken second diagonal
+        painter.drawRect(center + i - pixelSize/2, center - i - pixelSize/2 - pixelSize, pixelSize, pixelSize);
+        painter.drawRect(center + i - pixelSize/2 + pixelSize, center - i - pixelSize/2, pixelSize, pixelSize);
+    }
+    
+    painter.end();
+    
+    qDebug() << "Pixelated X mark created successfully";
+    return xImg;
 }
 
 // Add a separate color correction function
@@ -1142,6 +1205,115 @@ void BingoWidget::onRestartButtonClicked() {
     
     // 상태 메시지 업데이트
     statusMessageLabel->setText("Game restarted! Please select a cell to match colors");
+}
+
+// 타이머 틱마다 호출되는 함수
+void BingoWidget::onTimerTick() {
+    remainingSeconds--;
+    
+    // 타이머 디스플레이 업데이트
+    updateTimerDisplay();
+    
+    // 시간이 다 되었는지 확인
+    if (remainingSeconds <= 0) {
+        // 타이머 정지
+        gameTimer->stop();
+        
+        // 빙고 3개 이상인지 확인
+        if (bingoCount >= 3) {
+            // 이미 성공한 경우 아무것도 하지 않음
+            return;
+        }
+        
+        // 실패 처리
+        showFailMessage();
+    }
+}
+
+// 타이머 디스플레이 업데이트
+void BingoWidget::updateTimerDisplay() {
+    // 남은 시간을 분:초 형식으로 표시 (time 00:00)
+    int minutes = remainingSeconds / 60;
+    int seconds = remainingSeconds % 60;
+    
+    QString timeText = QString("Time %1:%2")
+                        .arg(minutes, 2, 10, QChar('0'))
+                        .arg(seconds, 2, 10, QChar('0'));
+    
+    timerLabel->setText(timeText);
+    
+    // 남은 시간에 따라 색상 변경
+    if (remainingSeconds <= 10) {
+        // 10초 이하면 빨간색
+        timerLabel->setStyleSheet("QLabel { background-color: rgba(50, 50, 50, 200); color: red; "
+                                 "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
+    } else {
+        // 그 외에는 하얀색
+        timerLabel->setStyleSheet("QLabel { background-color: rgba(50, 50, 50, 200); color: white; "
+                                 "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
+    }
+    
+    // 타이머 레이블 크기 및 위치 조정
+    timerLabel->adjustSize();
+    updateTimerPosition();
+}
+
+// 타이머 위치 업데이트
+void BingoWidget::updateTimerPosition() {
+    if (timerLabel) {
+        // 화면 상단 중앙에 배치
+        timerLabel->move((width() - timerLabel->width()) / 2, 10);
+        timerLabel->raise(); // 다른 위젯 위에 표시
+    }
+}
+
+// 타이머 시작
+void BingoWidget::startGameTimer() {
+    // 타이머 초기화
+    remainingSeconds = 120; // 2분
+    updateTimerDisplay();
+    
+    // 타이머 시작
+    gameTimer->start();
+}
+
+// 타이머 정지
+void BingoWidget::stopGameTimer() {
+    if (gameTimer) {
+        gameTimer->stop();
+    }
+}
+
+// 실패 메시지 표시
+void BingoWidget::showFailMessage() {
+    // 카메라가 실행 중이면 중지
+    if (isCapturing) {
+        stopCamera();
+    }
+    
+    // 실패 메시지 레이블 크기와 위치 설정
+    failLabel->setGeometry(0, 0, width(), height());
+    failLabel->raise(); // 다른 위젯 위에 표시
+    failLabel->show();
+    
+    // 2초 후 메시지 숨기고 메인 화면으로 돌아가기
+    QTimer::singleShot(2000, this, &BingoWidget::hideFailAndReset);
+}
+
+// 실패 메시지 숨기고 게임 초기화
+void BingoWidget::hideFailAndReset() {
+    failLabel->hide();
+    
+    // 카메라가 실행 중이면 중지
+    if (isCapturing) {
+        stopCamera();
+    }
+    
+    // 게임 상태 초기화
+    resetGame();
+    
+    // 메인 화면으로 돌아가는 신호 발생
+    emit backToMainRequested();
 }
 
 

@@ -45,6 +45,13 @@ private slots:
     void restartCamera();
     void onBackButtonClicked();
     void onRestartButtonClicked();
+    void onTimerTick();
+    void updateTimerDisplay();
+    void updateTimerPosition();
+    void startGameTimer();
+    void stopGameTimer();
+    void showFailMessage();
+    void hideFailAndReset();
 
 private:
     // 빙고 관련 함수들
@@ -134,6 +141,12 @@ private:
     QPushButton* restartButton; // Restart 버튼
 
     void updateBackButtonPosition();
+
+    // 타이머 관련 변수
+    QTimer* gameTimer;
+    int remainingSeconds;
+    QLabel* timerLabel;
+    QLabel* failLabel;
 };
 
 #endif // BINGOWIDGET_H
