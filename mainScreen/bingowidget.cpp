@@ -1081,35 +1081,7 @@ QPixmap BingoWidget::createXImage() {
     const int center = 50; // Center of the 100x100 pixmap
     const int xSize = 33;  // Will make X extend ~33px from center (2/3 of size)
     
-    // Draw first diagonal (top-left to bottom-right)
-    for (int i = -xSize; i <= xSize; i++) {
-        int x = center + i;
-        int y = center + i;
-        painter.drawRect(x, y, pixelSize, pixelSize);
-    }
-    
-    // Draw second diagonal (top-right to bottom-left)
-    for (int i = -xSize; i <= xSize; i++) {
-        int x = center + i;
-        int y = center - i;
-        painter.drawRect(x, y, pixelSize, pixelSize);
-    }
-    
-    // Thicken the diagonals by adding adjacent pixels
-    for (int i = -xSize; i <= xSize; i++) {
-        // Thicken first diagonal
-        int x1 = center + i;
-        int y1 = center + i;
-        painter.drawRect(x1 - pixelSize, y1, pixelSize, pixelSize);
-        
-        // Thicken second diagonal
-        int x2 = center + i;
-        int y2 = center - i;
-        painter.drawRect(x2 - pixelSize, y2, pixelSize, pixelSize);
-    }
-    
-    qDebug() << "X mark created: properly centered, 2/3 cell size";
-    return xImg;
+    return xImage;
 }
 
 // Add a separate color correction function
