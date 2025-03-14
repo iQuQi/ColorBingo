@@ -3,41 +3,50 @@
 #include <QDebug>
 #include <QThread>
 #include <QRandomGenerator>
-#include <QTimer>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    mainScreen(nullptr),
     colorCaptureWidget(nullptr),
     bingoWidget(nullptr)
 {
+    // 스택 위젯 초기화
+    stackedWidget = new QStackedWidget(this);
+    
+    // 메인 메뉴 화면 초기화
+    mainMenu = new QWidget(this);
+    
     // 메인 화면 초기화
     setupMainScreen();
+    
+    // 중앙 위젯으로 스택 위젯 설정
+    setCentralWidget(stackedWidget);
+    
+    // 메인 메뉴를 스택 위젯에 추가
+    stackedWidget->addWidget(mainMenu);
+    stackedWidget->setCurrentWidget(mainMenu);
 }
 
 void MainWindow::setupMainScreen()
 {
-    // 기존 메인 화면이 있다면 삭제
-    if (mainScreen) {
-        delete mainScreen;
-    }
-
-    // 새 메인 화면 생성
-    mainScreen = new QWidget(this);
+    // 메인 화면 위젯 설정
+    QVBoxLayout *mainLayout = new QVBoxLayout(mainMenu);
     
-    // 배경 스타일 설정
-    mainScreen->setStyleSheet("QWidget { background-color: #f5f5f5; }");
+    // 컨텐츠를 담을 중앙 컨테이너 생성
+    centerWidget = new QWidget(mainMenu);
+    centerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
-    // 중앙에 배치될 컨테이너 위젯
-    QWidget *centerContainer = new QWidget(mainScreen);
-    QVBoxLayout *centerLayout = new QVBoxLayout(centerContainer);
+    QVBoxLayout *centerLayout = new QVBoxLayout(centerWidget);
     centerLayout->setSpacing(20);
-    centerLayout->setContentsMargins(0, 0, 0, 0);
+    centerLayout->setContentsMargins(20, 20, 20, 20);
     
     // 타이틀 레이블
-    QLabel *titleLabel = new QLabel("Color Bingo", centerContainer);
+    QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333; margin-bottom: 40px;");
+    titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333; margin-bottom: 30px;");
     centerLayout->addWidget(titleLabel);
     
     // 버튼 공통 크기 설정
@@ -45,7 +54,7 @@ void MainWindow::setupMainScreen()
     const int BUTTON_HEIGHT = 70;
     
     // Start Bingo 버튼
-    QPushButton *startBingoButton = new QPushButton("Start Bingo", centerContainer);
+    QPushButton *startBingoButton = new QPushButton("Start Bingo", centerWidget);
     startBingoButton->setStyleSheet(
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
@@ -64,7 +73,7 @@ void MainWindow::setupMainScreen()
     centerLayout->addWidget(startBingoButton, 0, Qt::AlignCenter);
     
     // Exit 버튼
-    QPushButton *exitButton = new QPushButton("Exit", centerContainer);
+    QPushButton *exitButton = new QPushButton("Exit", centerWidget);
     exitButton->setStyleSheet(
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
@@ -83,45 +92,28 @@ void MainWindow::setupMainScreen()
     centerLayout->addWidget(exitButton, 0, Qt::AlignCenter);
     
     // 컨테이너 크기 조정
-    centerContainer->adjustSize();
+    centerWidget->adjustSize();
+    
+    // 메인 레이아웃에 스트레치와 중앙 컨테이너 추가
+    mainLayout->addStretch(1);
+    mainLayout->addWidget(centerWidget, 0, Qt::AlignCenter);
+    mainLayout->addStretch(1);
     
     // 시그널 연결
     connect(startBingoButton, &QPushButton::clicked, this, &MainWindow::onStartBingoClicked);
     connect(exitButton, &QPushButton::clicked, this, &QMainWindow::close);
     
-    // 메인 화면으로 설정
-    setCentralWidget(mainScreen);
-    
-    // 리사이즈 이벤트 처리를 위해 이벤트 필터 설치
-    mainScreen->installEventFilter(this);
-    
-    // centerContainer 포인터를 멤버 변수로 저장
-    if (centerWidget) {
-        delete centerWidget;
-    }
-    centerWidget = centerContainer;
-    
-    // 초기 위치 설정
+    // 중앙 위젯 위치 업데이트
     updateCenterWidgetPosition();
 }
 
-// 새로운 멤버 함수 추가 - 중앙 위젯 위치 업데이트
 void MainWindow::updateCenterWidgetPosition()
 {
-    if (mainScreen && centerWidget) {
-        int x = (mainScreen->width() - centerWidget->width()) / 2;
-        int y = (mainScreen->height() - centerWidget->height()) / 2;
+    if (mainMenu && centerWidget) {
+        int x = (mainMenu->width() - centerWidget->width()) / 2;
+        int y = (mainMenu->height() - centerWidget->height()) / 2;
         centerWidget->move(x, y);
     }
-}
-
-// 이벤트 필터 구현
-bool MainWindow::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == mainScreen && event->type() == QEvent::Resize) {
-        updateCenterWidgetPosition();
-    }
-    return QMainWindow::eventFilter(watched, event);
 }
 
 void MainWindow::onStartBingoClicked()
@@ -135,9 +127,13 @@ void MainWindow::onStartBingoClicked()
                 this, &MainWindow::onCreateBingoRequested);
         connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
                 this, &MainWindow::onBingoBackRequested);
+        
+        // 스택 위젯에 추가
+        stackedWidget->addWidget(colorCaptureWidget);
     }
     
-    setCentralWidget(colorCaptureWidget);
+    // 현재 위젯을 색상 캡처 위젯으로 변경
+    stackedWidget->setCurrentWidget(colorCaptureWidget);
     qDebug() << "DEBUG: ColorCaptureWidget now displayed";
 }
 
@@ -150,34 +146,32 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
         qDebug() << "DEBUG: Stopping camera before creating BingoWidget";
         colorCaptureWidget->stopCameraCapture();
         
-        // 카메라 자원 해제를 위한 대기 시간 증가
+        // 카메라 자원 해제를 위한 대기 시간
         qDebug() << "DEBUG: Waiting for camera resources to be fully released";
-        QThread::msleep(1500); // 1.5초 대기로 증가
+        QThread::msleep(1500); // 1.5초 대기
     }
     
     // 기존 bingoWidget이 있다면 안전하게 정리
     if (bingoWidget) {
         qDebug() << "DEBUG: Cleaning up previous BingoWidget";
         disconnect(bingoWidget); // 시그널 연결 해제
-        bingoWidget->deleteLater();
+        stackedWidget->removeWidget(bingoWidget);
+        delete bingoWidget;
         bingoWidget = nullptr;
     }
     
-    // 이벤트 루프 하나가 완료된 후에 BingoWidget 생성
-    QTimer::singleShot(0, this, [this, colors]() {
-        qDebug() << "DEBUG: Creating new BingoWidget safely";
-        
-        // BingoWidget 생성
-        bingoWidget = new BingoWidget(this, colors);
-        
-        // 시그널 연결 - 안전하게
-        connect(bingoWidget, &BingoWidget::backToMainRequested, 
-                this, &MainWindow::onBingoBackRequested, Qt::QueuedConnection);
-        
-        // 중앙 위젯 설정
-        setCentralWidget(bingoWidget);
-        qDebug() << "DEBUG: BingoWidget now displayed safely";
-    });
+    // BingoWidget 생성
+    qDebug() << "DEBUG: Creating BingoWidget";
+    bingoWidget = new BingoWidget(this, colors);
+    
+    // 시그널 연결
+    connect(bingoWidget, &BingoWidget::backToMainRequested, 
+            this, &MainWindow::onBingoBackRequested, Qt::QueuedConnection);
+    
+    // 스택 위젯에 추가 및 현재 위젯으로 설정
+    stackedWidget->addWidget(bingoWidget);
+    stackedWidget->setCurrentWidget(bingoWidget);
+    qDebug() << "DEBUG: BingoWidget now displayed";
 }
 
 void MainWindow::onBingoBackRequested()
@@ -188,19 +182,15 @@ void MainWindow::onBingoBackRequested()
     QTimer::singleShot(0, this, [this]() {
         qDebug() << "DEBUG: Executing delayed BingoWidget cleanup";
         
-        // 현재 중앙 위젯 제거 (삭제하지 않고)
-        if (centralWidget()) {
-            centralWidget()->setParent(nullptr);
-        }
+        // 메인 메뉴로 전환
+        stackedWidget->setCurrentWidget(mainMenu);
         
-        // 메인 화면 설정
-        setupMainScreen();
-        qDebug() << "DEBUG: Main screen setup complete";
-        
-        // bingoWidget을 nullptr로 설정하여 나중에 참조되지 않도록 함
+        // bingoWidget을 안전하게 정리
         if (bingoWidget) {
             qDebug() << "DEBUG: Cleaning up BingoWidget";
-            bingoWidget->deleteLater(); // 안전하게 삭제
+            disconnect(bingoWidget);
+            stackedWidget->removeWidget(bingoWidget);
+            bingoWidget->deleteLater();
             bingoWidget = nullptr;
         }
         
@@ -212,22 +202,19 @@ MainWindow::~MainWindow()
 {
     qDebug() << "DEBUG: MainWindow destructor called";
     
-    // 모든 위젯 연결 및 시그널 끊기
-    disconnect();
-    
-    // 안전한 메모리 해제 - deleteLater 사용
+    // 안전한 메모리 해제
     if (colorCaptureWidget) {
         colorCaptureWidget->stopCameraCapture();
-        colorCaptureWidget->deleteLater();
+        delete colorCaptureWidget;
         colorCaptureWidget = nullptr;
     }
     
     if (bingoWidget) {
-        bingoWidget->deleteLater();
+        delete bingoWidget;
         bingoWidget = nullptr;
     }
     
-    // mainScreen은 centralWidget으로 관리되므로 수동 삭제 불필요
+    // 메인 메뉴와 스택 위젯은 Qt가 자동으로 해제
     
     qDebug() << "DEBUG: MainWindow destructor completed";
 }

@@ -20,6 +20,8 @@ public:
     bool startCapturing();
     void stopCapturing();
     QImage getCurrentFrame();
+    bool isCameraCapturing() const { return isCapturing; }
+    int getfd() const { return fd; }
 
 signals:
     void newFrameAvailable();
