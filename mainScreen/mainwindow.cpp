@@ -11,37 +11,48 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     colorCaptureWidget(nullptr),
-    bingoWidget(nullptr)
+    bingoWidget(nullptr),
+    multiGameWidget(nullptr)
 {
+    // 기본 창 크기 설정
+    resize(800, 600);
+    
     // 스택 위젯 초기화
     stackedWidget = new QStackedWidget(this);
+    setCentralWidget(stackedWidget);
     
     // 메인 메뉴 화면 초기화
-    mainMenu = new QWidget(this);
+    mainMenu = new QWidget();
     
-    // 메인 화면 초기화
+    // 메인 화면 초기화 (mainMenu에 내용 추가)
     setupMainScreen();
-    
-    // 중앙 위젯으로 스택 위젯 설정
-    setCentralWidget(stackedWidget);
     
     // 메인 메뉴를 스택 위젯에 추가
     stackedWidget->addWidget(mainMenu);
     stackedWidget->setCurrentWidget(mainMenu);
+    
+    qDebug() << "MainWindow 생성 완료, mainMenu 크기:" << mainMenu->size();
+    qDebug() << "stackedWidget 크기:" << stackedWidget->size();
+    qDebug() << "MainWindow 크기:" << size();
 }
 
 void MainWindow::setupMainScreen()
 {
     // 메인 화면 위젯 설정
     QVBoxLayout *mainLayout = new QVBoxLayout(mainMenu);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
+    
+    // 배경 스타일 설정
+    mainMenu->setStyleSheet("QWidget { background-color: #f5f5f5; }");
     
     // 컨텐츠를 담을 중앙 컨테이너 생성
     centerWidget = new QWidget(mainMenu);
+    centerWidget->setStyleSheet("QWidget { background-color: #ffffff; border-radius: 10px; }");
     centerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     QVBoxLayout *centerLayout = new QVBoxLayout(centerWidget);
     centerLayout->setSpacing(20);
-    centerLayout->setContentsMargins(20, 20, 20, 20);
+    centerLayout->setContentsMargins(30, 30, 30, 30);
     
     // 타이틀 레이블
     QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
@@ -53,9 +64,8 @@ void MainWindow::setupMainScreen()
     const int BUTTON_WIDTH = 280;
     const int BUTTON_HEIGHT = 70;
     
-    // Start Bingo 버튼
-    QPushButton *startBingoButton = new QPushButton("Start Bingo", centerWidget);
-    startBingoButton->setStyleSheet(
+    // 버튼 공통 스타일 
+    QString blueButtonStyle = 
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
         "   background-color: #4a86e8; color: white; border-radius: 8px;"
@@ -66,15 +76,9 @@ void MainWindow::setupMainScreen()
         "}"
         "QPushButton:pressed {"
         "   background-color: #2a66c8;"
-        "}"
-    );
-    startBingoButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
-    startBingoButton->setCursor(Qt::PointingHandCursor);
-    centerLayout->addWidget(startBingoButton, 0, Qt::AlignCenter);
+        "}";
     
-    // Exit 버튼
-    QPushButton *exitButton = new QPushButton("Exit", centerWidget);
-    exitButton->setStyleSheet(
+    QString redButtonStyle = 
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
         "   background-color: #e74c3c; color: white; border-radius: 8px;"
@@ -85,8 +89,25 @@ void MainWindow::setupMainScreen()
         "}"
         "QPushButton:pressed {"
         "   background-color: #c0392b;"
-        "}"
-    );
+        "}";
+    
+    // Single Game 버튼 (이전의 Start Bingo 버튼)
+    QPushButton *singleGameButton = new QPushButton("Single Game", centerWidget);
+    singleGameButton->setStyleSheet(blueButtonStyle);
+    singleGameButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+    singleGameButton->setCursor(Qt::PointingHandCursor);
+    centerLayout->addWidget(singleGameButton, 0, Qt::AlignCenter);
+    
+    // Multi Game 버튼 (새로 추가)
+    QPushButton *multiGameButton = new QPushButton("Multi Game", centerWidget);
+    multiGameButton->setStyleSheet(blueButtonStyle);
+    multiGameButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+    multiGameButton->setCursor(Qt::PointingHandCursor);
+    centerLayout->addWidget(multiGameButton, 0, Qt::AlignCenter);
+    
+    // Exit 버튼
+    QPushButton *exitButton = new QPushButton("Exit", centerWidget);
+    exitButton->setStyleSheet(redButtonStyle);
     exitButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
     exitButton->setCursor(Qt::PointingHandCursor);
     centerLayout->addWidget(exitButton, 0, Qt::AlignCenter);
@@ -100,25 +121,17 @@ void MainWindow::setupMainScreen()
     mainLayout->addStretch(1);
     
     // 시그널 연결
-    connect(startBingoButton, &QPushButton::clicked, this, &MainWindow::onStartBingoClicked);
+    connect(singleGameButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
+    connect(multiGameButton, &QPushButton::clicked, this, &MainWindow::showMultiGameScreen);
     connect(exitButton, &QPushButton::clicked, this, &QMainWindow::close);
     
-    // 중앙 위젯 위치 업데이트
-    updateCenterWidgetPosition();
+    qDebug() << "setupMainScreen 완료, centerWidget 크기:" << centerWidget->size();
 }
 
-void MainWindow::updateCenterWidgetPosition()
+// 단일 게임 화면 표시 (이전의 onStartBingoClicked)
+void MainWindow::showBingoScreen()
 {
-    if (mainMenu && centerWidget) {
-        int x = (mainMenu->width() - centerWidget->width()) / 2;
-        int y = (mainMenu->height() - centerWidget->height()) / 2;
-        centerWidget->move(x, y);
-    }
-}
-
-void MainWindow::onStartBingoClicked()
-{
-    qDebug() << "DEBUG: Start Bingo button clicked";
+    qDebug() << "DEBUG: Single Game button clicked";
     
     if (!colorCaptureWidget) {
         qDebug() << "DEBUG: Creating new ColorCaptureWidget";
@@ -126,7 +139,7 @@ void MainWindow::onStartBingoClicked()
         connect(colorCaptureWidget, &ColorCaptureWidget::createBingoRequested, 
                 this, &MainWindow::onCreateBingoRequested);
         connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
-                this, &MainWindow::onBingoBackRequested);
+                this, &MainWindow::showMainMenu);
         
         // 스택 위젯에 추가
         stackedWidget->addWidget(colorCaptureWidget);
@@ -135,6 +148,26 @@ void MainWindow::onStartBingoClicked()
     // 현재 위젯을 색상 캡처 위젯으로 변경
     stackedWidget->setCurrentWidget(colorCaptureWidget);
     qDebug() << "DEBUG: ColorCaptureWidget now displayed";
+}
+
+// 멀티게임 화면 표시 (새로 추가)
+void MainWindow::showMultiGameScreen()
+{
+    qDebug() << "DEBUG: Multi Game button clicked";
+    
+    if (!multiGameWidget) {
+        qDebug() << "DEBUG: Creating new MultiGameWidget";
+        multiGameWidget = new MultiGameWidget(this);
+        connect(multiGameWidget, &MultiGameWidget::backToMainRequested, 
+                this, &MainWindow::showMainMenu);
+        
+        // 스택 위젯에 추가
+        stackedWidget->addWidget(multiGameWidget);
+    }
+    
+    // 현재 위젯을 멀티게임 위젯으로 변경
+    stackedWidget->setCurrentWidget(multiGameWidget);
+    qDebug() << "DEBUG: MultiGameWidget now displayed";
 }
 
 void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
@@ -166,7 +199,7 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
     
     // 시그널 연결
     connect(bingoWidget, &BingoWidget::backToMainRequested, 
-            this, &MainWindow::onBingoBackRequested, Qt::QueuedConnection);
+            this, &MainWindow::showMainMenu, Qt::QueuedConnection);
     
     // 스택 위젯에 추가 및 현재 위젯으로 설정
     stackedWidget->addWidget(bingoWidget);
@@ -174,28 +207,36 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
     qDebug() << "DEBUG: BingoWidget now displayed";
 }
 
-void MainWindow::onBingoBackRequested()
+// 메인 메뉴 표시 (이전의 onBingoBackRequested)
+void MainWindow::showMainMenu()
 {
-    qDebug() << "DEBUG: Back to main requested - SAFE HANDLING";
+    qDebug() << "DEBUG: Back to main menu requested - SAFE HANDLING";
     
     // 이벤트 루프가 완료될 때까지 객체 삭제 지연
     QTimer::singleShot(0, this, [this]() {
-        qDebug() << "DEBUG: Executing delayed BingoWidget cleanup";
+        qDebug() << "DEBUG: Executing delayed widget cleanup";
         
         // 메인 메뉴로 전환
         stackedWidget->setCurrentWidget(mainMenu);
-        
-        // bingoWidget을 안전하게 정리
-        if (bingoWidget) {
-            qDebug() << "DEBUG: Cleaning up BingoWidget";
-            disconnect(bingoWidget);
-            stackedWidget->removeWidget(bingoWidget);
-            bingoWidget->deleteLater();
-            bingoWidget = nullptr;
-        }
-        
-        qDebug() << "DEBUG: Returned to main screen safely";
+        qDebug() << "DEBUG: Main menu now displayed";
     });
+}
+
+bool MainWindow::event(QEvent *event)
+{
+    if (event->type() == QEvent::Resize) {
+        updateCenterWidgetPosition();
+    }
+    return QMainWindow::event(event);
+}
+
+void MainWindow::updateCenterWidgetPosition()
+{
+    if (mainMenu && centerWidget) {
+        int x = (mainMenu->width() - centerWidget->width()) / 2;
+        int y = (mainMenu->height() - centerWidget->height()) / 2;
+        centerWidget->move(x, y);
+    }
 }
 
 MainWindow::~MainWindow()
@@ -212,6 +253,11 @@ MainWindow::~MainWindow()
     if (bingoWidget) {
         delete bingoWidget;
         bingoWidget = nullptr;
+    }
+    
+    if (multiGameWidget) {
+        delete multiGameWidget;
+        multiGameWidget = nullptr;
     }
     
     // 메인 메뉴와 스택 위젯은 Qt가 자동으로 해제

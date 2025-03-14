@@ -4,8 +4,11 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QStackedWidget>
+#include <QList>
+#include <QColor>
 #include "colorcapturewidget.h"
 #include "bingowidget.h"
+#include "multigamewidget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -16,19 +19,22 @@ public:
     ~MainWindow();
 
 private slots:
-    void onStartBingoClicked();
+    void showBingoScreen();
+    void showMultiGameScreen();
+    void showMainMenu();
     void onCreateBingoRequested(const QList<QColor> &colors);
-    void onBingoBackRequested();
 
 private:
     void setupMainScreen();
     void updateCenterWidgetPosition();
+    bool event(QEvent *event) override;
     
     QStackedWidget *stackedWidget;
     QWidget *mainMenu;
     QWidget *centerWidget = nullptr;
     ColorCaptureWidget *colorCaptureWidget;
     BingoWidget *bingoWidget;
+    MultiGameWidget *multiGameWidget;
 };
 
 #endif // MAINWINDOW_H
