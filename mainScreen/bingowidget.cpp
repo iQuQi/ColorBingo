@@ -5,7 +5,7 @@
 #include <QSizePolicy>
 #include <QThread>
 
-BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
+BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
     isCapturing(false),
     showCircle(true),
     circleRadius(10),
@@ -194,8 +194,12 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     fadeXTimer->setSingleShot(true);
     connect(fadeXTimer, &QTimer::timeout, this, &BingoWidget::clearXMark);
     
-    // 빙고 셀에 낮은 채도의 랜덤 색상 생성
-    generateRandomColors();
+    // 빙고 셀에 낮은 채도의 랜덤 색상 생성 대신 initialColors 사용
+    if (initialColors.size() >= 9) {
+        setCustomColors(initialColors);
+    } else {
+        generateRandomColors();
+    }
     
     // 카메라 초기화
     camera = new V4L2Camera(this);
@@ -995,15 +999,6 @@ void BingoWidget::onCircleSliderValueChanged(int value) {
     circleValueLabel->setText(QString::number(value) + "%");
 }
 
-void BingoWidget::onCircleCheckBoxToggled(bool checked) {
-    // 사용하지 않음 (항상 표시)
-    // showCircle 변수는 그대로 true로 유지
-}
-
-void BingoWidget::onRgbCheckBoxToggled(bool checked) {
-    // Function not used anymore since RGB values are always shown
-}
-
 void BingoWidget::restartCamera()
 {
     if (isCapturing) {
@@ -1109,6 +1104,9 @@ void BingoWidget::resetGame() {
             bingoStatus[row][col] = false;
             bingoCells[row][col]->clear();  // 모든 내용 지우기
             bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);  // 여백 초기화
+            
+            // 색상은 유지하고 스타일만 업데이트
+            updateCellStyle(row, col);
         }
     }
     
@@ -1120,8 +1118,8 @@ void BingoWidget::resetGame() {
     // 선택된 셀 초기화
     selectedCell = qMakePair(-1, -1);
     
-    // 셀 색상 새로 생성
-    generateRandomColors();
+    // 색상 생성 코드 제거 - 기존 색상 유지
+    // generateRandomColors(); <- 이 줄 제거 또는 주석 처리
     
     // 타이머 재시작
     startGameTimer();
@@ -1149,6 +1147,15 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
 }
 
 void BingoWidget::onBackButtonClicked() {
+    qDebug() << "DEBUG: BingoWidget - Back button clicked";
+    
+    // 카메라가 켜져 있다면 중지
+    if (isCapturing) {
+        qDebug() << "DEBUG: BingoWidget - Stopping camera before emitting back signal";
+        stopCamera();
+    }
+    
+    qDebug() << "DEBUG: BingoWidget - Emitting backToMainRequested signal";
     emit backToMainRequested();
 }
 
@@ -1344,6 +1351,41 @@ void BingoWidget::hideFailAndReset() {
     
     // 메인 화면으로 돌아가는 신호 발생
     emit backToMainRequested();
+}
+
+// 전달받은 색상을 셀에 설정하는 메서드
+void BingoWidget::setCustomColors(const QList<QColor> &colors) {
+    qDebug() << "Setting custom colors to bingo cells";
+    
+    if (colors.size() < 9) {
+        qDebug() << "Not enough colors provided. Expected 9, got" << colors.size();
+        return;
+    }
+    
+    int colorIndex = 0;
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            cellColors[row][col] = colors[colorIndex++];
+            
+            // 경계선 스타일 생성
+            QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+            
+            if (row == 2) {
+                borderStyle += " border-bottom: 1px solid black;";
+            }
+            if (col == 2) {
+                borderStyle += " border-right: 1px solid black;";
+            }
+            
+            // 배경색 적용, 텍스트 제거함
+            bingoCells[row][col]->setText("");
+            bingoCells[row][col]->setStyleSheet(
+                QString("background-color: %1; %2")
+                .arg(cellColors[row][col].name())
+                .arg(borderStyle)
+            );
+        }
+    }
 }
 
 

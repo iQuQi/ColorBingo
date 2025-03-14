@@ -16,12 +16,14 @@
 #include <QPair>
 #include <QPixmap>
 #include <QPushButton>
+#include <QList>
+#include <QColor>
 
 class BingoWidget : public QWidget {
     Q_OBJECT
 
 public:
-    explicit BingoWidget(QWidget *parent = nullptr);
+    explicit BingoWidget(QWidget *parent = nullptr, const QList<QColor> &initialColors = QList<QColor>());
     ~BingoWidget();
     bool eventFilter(QObject *obj, QEvent *event) override;
 
@@ -36,8 +38,6 @@ private slots:
     void updateCameraFrame();
     void handleCameraDisconnect();
     void onCircleSliderValueChanged(int value);
-    void onCircleCheckBoxToggled(bool checked);
-    void onRgbCheckBoxToggled(bool checked);
     void clearXMark();
     void showSuccessMessage();
     void hideSuccessAndReset();
@@ -149,6 +149,14 @@ private:
     QLabel* failLabel;
 
     QWidget* sliderWidget;  // Circle slider container widget
+
+    // 전달받은 색상 설정하는 메서드 추가
+    void setCustomColors(const QList<QColor> &colors);
+
+    // 기존 private 멤버 변수 영역에 추가
+    QLabel *rValueLabel;
+    QLabel *gValueLabel;
+    QLabel *bValueLabel;
 };
 
 #endif // BINGOWIDGET_H
