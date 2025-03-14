@@ -12,11 +12,13 @@
 #include <QCheckBox>
 #include <QEvent>
 #include <QMouseEvent>
-#include "v4l2camera.h"
+#include "hardwareInterface/v4l2camera.h"
 #include <QTimer>
 #include <QThread>
 #include <QPair>
 #include <QPixmap>
+#include <QShowEvent>
+#include <QHideEvent>
 
 class MultiGameWidget : public QWidget {
     Q_OBJECT
@@ -25,9 +27,16 @@ public:
     explicit MultiGameWidget(QWidget *parent = nullptr);
     ~MultiGameWidget();
     bool eventFilter(QObject *obj, QEvent *event) override;
+    
+    // 카메라 상태 확인 및 제어 메서드 추가
+    bool isCameraCapturing() const { return isCapturing; }
+    V4L2Camera* getCamera() const { return camera; }
+    void stopCamera();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 signals:
     void backToMainRequested();

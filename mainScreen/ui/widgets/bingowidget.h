@@ -11,7 +11,6 @@
 #include <QCheckBox>
 #include <QEvent>
 #include <QMouseEvent>
-#include "v4l2camera.h"
 #include <QTimer>
 #include <QPair>
 #include <QPixmap>
@@ -21,7 +20,8 @@
 #include <QFile>
 #include <QSocketNotifier>
 #include <linux/input.h>
-#include "webcambutton.h"
+#include "hardwareInterface/v4l2camera.h"
+#include "hardwareInterface/webcambutton.h"
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -35,6 +35,8 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 signals:
     void backToMainRequested();
@@ -143,6 +145,7 @@ private:
     QPixmap bearImage;
 
     QPixmap createXImage(); // X 이미지 생성 함수
+    QPixmap createBearImage(); // 곰돌이 이미지 생성 함수 추가
 
     // 색상 보정 관련 함수
     QImage adjustColorBalance(const QImage &image);

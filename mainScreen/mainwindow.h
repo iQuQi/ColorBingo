@@ -6,9 +6,9 @@
 #include <QStackedWidget>
 #include <QList>
 #include <QColor>
-#include "colorcapturewidget.h"
-#include "bingowidget.h"
-#include "multigamewidget.h"
+#include "ui/widgets/colorcapturewidget.h"
+#include "ui/widgets/bingowidget.h"
+#include "ui/widgets/multigamewidget.h"
 
 class MainWindow : public QMainWindow
 {

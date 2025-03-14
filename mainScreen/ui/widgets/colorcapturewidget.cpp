@@ -1,4 +1,4 @@
-#include "colorcapturewidget.h"
+#include "ui/widgets/colorcapturewidget.h"
 #include <QDebug>
 #include <QMessageBox>
 #include <QPainter>
@@ -6,6 +6,8 @@
 #include <QThread>
 #include <algorithm>
 #include <QTimer>
+#include <QShowEvent>
+#include <QHideEvent>
 
 ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     QWidget(parent),
@@ -22,7 +24,7 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     cameraView = new QLabel(this);
     cameraView->setAlignment(Qt::AlignCenter);
     cameraView->setFrameShape(QFrame::NoFrame);
-    cameraView->setText("");
+    cameraView->setText("Camera connecting...");
     
     // 버튼 패널 생성 (떠 있는 형태)
     buttonPanel = new QWidget(this);
@@ -88,43 +90,85 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     // 초기 사이즈 설정
     resize(parent->size());
     
-    // 카메라 열기
-    if (!camera->openCamera("/dev/video4")) {
-        cameraView->setText("Camera connection failed");
-        qDebug() << "Failed to open camera";
+    // 카메라 열기는 필요하지만 시작은 showEvent에서 수행
+    if (!camera->openCamera()) {
+        QMessageBox::critical(this, "Error", "Failed to open camera device");
     } else {
         qDebug() << "Camera opened successfully";
-        
-        // 카메라 시작
-        qDebug() << "startCamera called";
-        startCamera();
     }
     
     qDebug() << "DEBUG: ColorCaptureWidget constructor completed";
+}
+
+void ColorCaptureWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    qDebug() << "DEBUG: ColorCaptureWidget showEvent triggered";
     
-    // 디버그용 타이머 - 위젯 가시성 확인
-    QTimer::singleShot(500, this, [this]() {
-        qDebug() << "DEBUG: Camera view visible:" << cameraView->isVisible();
-        qDebug() << "DEBUG: Button panel visible:" << buttonPanel->isVisible();
+    // 위젯이 보여질 때 카메라 시작
+    startCamera();
+    
+    // 카메라 뷰 업데이트를 위한 짧은 지연
+    QTimer::singleShot(100, this, [this]() {
+        if (cameraView) {
+            updateCameraFrame();
+        }
     });
+}
+
+void ColorCaptureWidget::hideEvent(QHideEvent* event)
+{
+    QWidget::hideEvent(event);
+    qDebug() << "DEBUG: ColorCaptureWidget hideEvent triggered";
+    
+    // 위젯이 숨겨질 때 카메라 중지
+    stopCameraCapture();
 }
 
 void ColorCaptureWidget::startCamera() 
 {
-    if (!isCapturing && camera) {
-        if (camera->startCapturing()) {
-            isCapturing = true;
-            qDebug() << "Camera capture started successfully";
-        } else {
-            qDebug() << "Failed to start camera capture";
+    qDebug() << "DEBUG: startCamera called";
+    
+    if (isCapturing) {
+        qDebug() << "Camera is already capturing, no action needed";
+        return;
+    }
+    
+    if (!camera) {
+        qDebug() << "ERROR: Camera object is null";
+        return;
+    }
+    
+    // 카메라가 닫혀있으면 다시 열기
+    if (camera->getfd() == -1) {
+        qDebug() << "Camera is closed, reopening";
+        if (!camera->openCamera()) {
+            qDebug() << "Failed to reopen camera";
+            return;
         }
+        // 카메라 열기 후 약간의 지연
+        QThread::msleep(100);
+    }
+    
+    // 카메라 캡처 시작
+    if (camera->startCapturing()) {
+        isCapturing = true;
+        qDebug() << "Camera capture started successfully";
+        
+        // 카메라 뷰 초기화
+        if (cameraView) {
+            cameraView->clear();
+        }
+    } else {
+        qDebug() << "Failed to start camera capture";
     }
 }
 
 void ColorCaptureWidget::stopCameraCapture() 
 {
     qDebug() << "DEBUG: Stopping camera capture";
-    if (isCapturing && camera) {
+    
+    if (camera) {
         camera->stopCapturing();
         isCapturing = false;
         qDebug() << "DEBUG: Camera capture stopped";
@@ -134,7 +178,7 @@ void ColorCaptureWidget::stopCameraCapture()
         qDebug() << "DEBUG: Camera closed completely";
         
         // 지연 추가
-        QThread::msleep(1000);
+        QThread::msleep(100);
     }
 }
 

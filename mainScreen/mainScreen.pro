@@ -13,20 +13,20 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-        bingowidget.cpp \
-        v4l2camera.cpp \
-        colorcapturewidget.cpp \
-        webcambutton.cpp \
-    	multigamewidget.cpp
+    mainwindow.cpp \
+    ui/widgets/bingowidget.cpp \
+    ui/widgets/colorcapturewidget.cpp \
+    ui/widgets/multigamewidget.cpp \
+    hardwareInterface/webcambutton.cpp \
+    hardwareInterface/v4l2camera.cpp \
 
 HEADERS  += mainwindow.h \
-    bingowidget.h \
-    v4l2camera.h \
-    colorcapturewidget.h \
-    webcambutton.h \
-    multigamewidget.h
+    ui/widgets/bingowidget.h \
+    ui/widgets/colorcapturewidget.h \
+    ui/widgets/multigamewidget.h \
+    hardwareInterface/v4l2camera.h \
+    hardwareInterface/webcambutton.h
 
-FORMS    += mainwindow.ui
+FORMS += mainwindow.ui
 
 LIBS += -lpthread
