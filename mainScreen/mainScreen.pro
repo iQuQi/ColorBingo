@@ -16,12 +16,14 @@ SOURCES += main.cpp\
         mainwindow.cpp \
         bingowidget.cpp \
         v4l2camera.cpp \
-        webcambutton.cpp
+        webcambutton.cpp \
+    	multigamewidget.cpp
 
 HEADERS  += mainwindow.h \
     bingowidget.h \
     v4l2camera.h \
-    webcambutton.h
+    webcambutton.h \
+    multigamewidget.h
 
 FORMS    += mainwindow.ui
 

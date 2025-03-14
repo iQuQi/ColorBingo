@@ -7,6 +7,7 @@
 #include <QVBoxLayout>
 #include <QStackedWidget>
 #include "bingowidget.h"
+#include "multigamewidget.h"
 
 namespace Ui {
 class MainWindow;
@@ -22,12 +23,14 @@ public:
 
 private slots:
     void showBingoScreen();
+    void showMultiGameScreen();
     void showMainMenu();
 
 private:
     QStackedWidget *stackedWidget;
     QWidget *mainMenu;
     BingoWidget *bingoWidget;
+    MultiGameWidget *multiGameWidget;
 };
 
 #endif // MAINWINDOW_H

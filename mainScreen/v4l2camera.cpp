@@ -1,6 +1,7 @@
 #include "v4l2camera.h"
 #include <QDebug>
 #include <fcntl.h>
+#include <QThread>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -29,6 +30,12 @@ V4L2Camera::~V4L2Camera()
 bool V4L2Camera::openCamera(const QString &deviceName)
 {
     struct stat st;
+
+    if (fd != -1) {
+        qDebug() << "Camera already open, closing first.";
+        closeCamera();
+        return true;
+    }
     
     devicePath = deviceName;
 
