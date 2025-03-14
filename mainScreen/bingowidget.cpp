@@ -15,7 +15,8 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     showRgbValues(true),
     selectedCell(-1, -1),
     bingoCount(0),
-    remainingSeconds(120) // 2분 = 120초 타이머 초기화
+    remainingSeconds(120), // 2분 = 120초 타이머 초기화
+    sliderWidget(nullptr)  // 추가된 부분
 {
     qDebug() << "BingoWidget constructor started";
     
@@ -152,10 +153,13 @@ BingoWidget::BingoWidget(QWidget *parent) : QWidget(parent),
     cameraVLayout->addWidget(cameraView, 0, Qt::AlignCenter);
 
     // 3. 원 크기 조절 슬라이더 (맨 아래에 배치)
-    QWidget *sliderWidget = new QWidget(cameraArea);
+    sliderWidget = new QWidget(cameraArea);
     sliderWidget->setFixedWidth(300); // Same width as camera
     QHBoxLayout *circleSliderLayout = new QHBoxLayout(sliderWidget);
     circleSliderLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 초기에는 슬라이더 위젯 숨김
+    sliderWidget->hide();
 
     QLabel *circleLabel = new QLabel("Circle Size:");
     circleSlider = new QSlider(Qt::Horizontal);
@@ -477,6 +481,12 @@ void BingoWidget::startCamera() {
                 qDebug() << "Camera restart timer started";
             }
             
+            // 카메라가 켜졌으므로 슬라이더 위젯 표시
+            if (sliderWidget) {
+                sliderWidget->show();
+                qDebug() << "Circle slider widget shown";
+            }
+            
             qDebug() << "Camera capture started successfully";
         } else {
             qDebug() << "Failed to start camera capture";
@@ -506,6 +516,18 @@ void BingoWidget::stopCamera() {
             qDebug() << "Camera restart timer stopped";
         }
         
+        // 카메라가 꺼졌으므로 슬라이더 위젯 숨김
+        if (sliderWidget) {
+            sliderWidget->hide();
+            qDebug() << "Circle slider widget hidden";
+        }
+        
+        // 카메라 뷰에 메시지 표시
+        if (cameraView) {
+            cameraView->setText("Camera is off");
+            cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
+        }
+        
         qDebug() << "Camera capture stopped";
     } else {
         qDebug() << "Camera is already stopped.";
@@ -514,15 +536,40 @@ void BingoWidget::stopCamera() {
 
 // 채도가 낮은 랜덤 색상 생성
 void BingoWidget::generateRandomColors() {
+    // 9개의 색상을 담을 배열
+    QList<QColor> colors;
+    
+    // 색상환(0-359)을 9개 영역으로 나눔 (각 영역에서 하나씩 선택)
+    const int segments = 9;
+    const int hueStep = 360 / segments;
+    
+    // 각 영역에서 하나씩 색상 선택
+    for (int i = 0; i < segments; ++i) {
+        int baseHue = i * hueStep;
+        // 각 영역 내에서 랜덤한 hue 선택
+        int hue = baseHue + QRandomGenerator::global()->bounded(hueStep);
+        
+        // 랜덤 채도 (40-255 범위로 설정하여 너무 회색에 가까운 색상 방지)
+        int saturation = QRandomGenerator::global()->bounded(40, 255);
+        
+        // 랜덤 명도 (140-255 범위로 설정하여 어두운 색상 방지)
+        int value = QRandomGenerator::global()->bounded(140, 255);
+        
+        // HSV 색상 생성 후 목록에 추가
+        colors.append(QColor::fromHsv(hue, saturation, value));
+    }
+    
+    // 색상 목록을 섞기 (셔플링)
+    for (int i = 0; i < colors.size(); ++i) {
+        int j = QRandomGenerator::global()->bounded(colors.size());
+        colors.swapItemsAt(i, j);
+    }
+    
+    // 섞인 색상을 빙고판에 적용
+    int colorIndex = 0;
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
-            // HSV 색상 모델을 사용하여 채도가 적당한 색상 생성
-            int hue = QRandomGenerator::global()->bounded(360);  // 0-359 범위의 색조
-            int saturation = QRandomGenerator::global()->bounded(70, 160);  // 70-160 범위의 채도 (너무 높지 않음)
-            int value = QRandomGenerator::global()->bounded(180, 240);  // 180-240 범위의 명도 (너무 어둡거나 밝지 않음)
-            
-            QColor cellColor = QColor::fromHsv(hue, saturation, value);
-            cellColors[row][col] = cellColor;
+            cellColors[row][col] = colors[colorIndex++];
             
             // 경계선 스타일 생성
             QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
@@ -538,7 +585,7 @@ void BingoWidget::generateRandomColors() {
             bingoCells[row][col]->setText("");
             bingoCells[row][col]->setStyleSheet(
                 QString("background-color: %1; %2")
-                .arg(cellColor.name())
+                .arg(cellColors[row][col].name())
                 .arg(borderStyle)
             );
         }
@@ -1106,51 +1153,34 @@ void BingoWidget::onBackButtonClicked() {
 }
 
 QPixmap BingoWidget::createXImage() {
-    qDebug() << "Creating optimized pixelated X mark";
+    qDebug() << "Creating smooth line-based X mark";
     
     // Create X image with transparent background
     QPixmap xImg(100, 100);
     xImg.fill(Qt::transparent);
     
     QPainter painter(&xImg);
-    // Disable antialiasing for pixelated look
-    painter.setRenderHint(QPainter::Antialiasing, false);
+    // 선을 부드럽게 그리기 위해 안티앨리어싱 활성화
+    painter.setRenderHint(QPainter::Antialiasing, true);
     
-    // Use white color
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QBrush(Qt::white));
+    // 선 두께와 색상 설정
+    QPen pen(Qt::white);
+    pen.setWidth(8);  // 선 두께 설정
+    pen.setCapStyle(Qt::RoundCap);  // 선 끝을 둥글게
+    pen.setJoinStyle(Qt::RoundJoin);  // 선 연결 부분을 둥글게
+    painter.setPen(pen);
     
-    // Define pixel size for a cleaner look
-    const int pixelSize = 5;
+    // 중심점 계산
+    const int center = 50;  // 100x100 이미지의 중심
+    const int padding = 20;  // 외곽 여백
     
-    // Define center point and size
-    const int center = 50; // Center of the 100x100 pixmap
-    const int xSize = 33;  // Will make X extend ~33px from center (2/3 of size)
-    
-    // Draw first diagonal (top-left to bottom-right)
-    for (int i = -xSize; i <= xSize; i += pixelSize) {
-        painter.drawRect(center + i - pixelSize/2, center + i - pixelSize/2, pixelSize, pixelSize);
-    }
-    
-    // Draw second diagonal (top-right to bottom-left)
-    for (int i = -xSize; i <= xSize; i += pixelSize) {
-        painter.drawRect(center + i - pixelSize/2, center - i - pixelSize/2, pixelSize, pixelSize);
-    }
-    
-    // Make diagonals thicker for better visibility
-    for (int i = -xSize; i <= xSize; i += pixelSize) {
-        // Thicken first diagonal
-        painter.drawRect(center + i - pixelSize/2, center + i - pixelSize/2 + pixelSize, pixelSize, pixelSize);
-        painter.drawRect(center + i - pixelSize/2 + pixelSize, center + i - pixelSize/2, pixelSize, pixelSize);
-        
-        // Thicken second diagonal
-        painter.drawRect(center + i - pixelSize/2, center - i - pixelSize/2 - pixelSize, pixelSize, pixelSize);
-        painter.drawRect(center + i - pixelSize/2 + pixelSize, center - i - pixelSize/2, pixelSize, pixelSize);
-    }
+    // 대각선 두 개 그리기
+    painter.drawLine(padding, padding, 100-padding, 100-padding);  // 왼쪽 위에서 오른쪽 아래로
+    painter.drawLine(100-padding, padding, padding, 100-padding);  // 오른쪽 위에서 왼쪽 아래로
     
     painter.end();
     
-    qDebug() << "Pixelated X mark created successfully";
+    qDebug() << "Smooth line-based X mark created successfully";
     return xImg;
 }
 

@@ -147,6 +147,8 @@ private:
     int remainingSeconds;
     QLabel* timerLabel;
     QLabel* failLabel;
+
+    QWidget* sliderWidget;  // Circle slider container widget
 };
 
 #endif // BINGOWIDGET_H
