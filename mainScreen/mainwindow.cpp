@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "hardwareInterface/SoundManager.h"
+#include "ui/widgets/colorcapturewidget.h"
 #include <QDebug>
 #include <QThread>
 #include <QRandomGenerator>
@@ -9,6 +10,7 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QTimer>
+#include <QPainter>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -41,6 +43,73 @@ MainWindow::MainWindow(QWidget *parent) :
     qDebug() << "MainWindow 크기:" << size();
 }
 
+// 픽셀 스타일의 곰돌이 이미지 생성 함수
+QPixmap MainWindow::createBearImage() {
+    QPixmap bearImage(80, 80);
+    bearImage.fill(Qt::transparent);
+    QPainter painter(&bearImage);
+    
+    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    
+    // 갈색 곰돌이 색상
+    QColor bearColor(165, 113, 78);
+    QColor darkBearColor(120, 80, 60);
+    
+    // 중앙 정렬을 위한 오프셋
+    int offsetX = 5;
+    int offsetY = 5;
+    
+    // 기본 얼굴 사각형
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(bearColor);
+    painter.drawRect(15 + offsetX, 20 + offsetY, 40, 40);
+    
+    // 얼굴 둥글게 만들기 - 픽셀 추가
+    painter.drawRect(11 + offsetX, 25 + offsetY, 4, 30);  // 왼쪽
+    painter.drawRect(55 + offsetX, 25 + offsetY, 4, 30);  // 오른쪽
+    painter.drawRect(20 + offsetX, 16 + offsetY, 30, 4);  // 위
+    painter.drawRect(20 + offsetX, 60 + offsetY, 30, 4);  // 아래
+    
+    // 추가 픽셀로 더 둥글게 표현
+    painter.drawRect(15 + offsetX, 20 + offsetY, 5, 5);   // 좌상단 보강
+    painter.drawRect(50 + offsetX, 20 + offsetY, 5, 5);   // 우상단 보강
+    painter.drawRect(15 + offsetX, 55 + offsetY, 5, 5);   // 좌하단 보강
+    painter.drawRect(50 + offsetX, 55 + offsetY, 5, 5);   // 우하단 보강
+    
+    // 모서리 픽셀 추가
+    painter.drawRect(12 + offsetX, 21 + offsetY, 3, 4);   // 좌상단 모서리
+    painter.drawRect(55 + offsetX, 21 + offsetY, 3, 4);   // 우상단 모서리
+    painter.drawRect(12 + offsetX, 55 + offsetY, 3, 4);   // 좌하단 모서리
+    painter.drawRect(55 + offsetX, 55 + offsetY, 3, 4);   // 우하단 모서리
+    
+    // 귀 위치 및 크기 조정 (가로 길이 축소)
+    // 왼쪽 귀 - 가로 길이 축소 (13→10)
+    painter.drawRect(16 + offsetX, 6 + offsetY, 10, 16);  // 기본 왼쪽 귀 (가로 축소)
+    painter.drawRect(11 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 왼쪽 보강
+    painter.drawRect(26 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 오른쪽 보강 (좌표 조정)
+    
+    // 오른쪽 귀 - 가로 길이 축소 (13→10)
+    painter.drawRect(44 + offsetX, 6 + offsetY, 10, 16);  // 기본 오른쪽 귀 (가로 축소)
+    painter.drawRect(39 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 왼쪽 보강 (좌표 조정)
+    painter.drawRect(54 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 오른쪽 보강
+    
+    // 귀 안쪽 (더 어두운 색) - 가로 길이 축소 (7→6)
+    painter.setBrush(darkBearColor);
+    painter.drawRect(19 + offsetX, 9 + offsetY, 6, 10);   // 왼쪽 귀 안쪽 (가로 축소)
+    painter.drawRect(45 + offsetX, 9 + offsetY, 6, 10);   // 오른쪽 귀 안쪽 (가로 축소)
+    
+    // 눈 (간격 넓히기)
+    painter.setBrush(Qt::black);
+    painter.drawRect(22 + offsetX, 35 + offsetY, 6, 6);   // 왼쪽 눈 (좌표 조정 - 더 왼쪽으로)
+    painter.drawRect(42 + offsetX, 35 + offsetY, 6, 6);   // 오른쪽 눈 (좌표 조정 - 더 오른쪽으로)
+    
+    // 코 (위치 위로 올리고 크기 축소)
+    painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
+    
+    return bearImage;
+}
+
 void MainWindow::setupMainScreen()
 {
     // 메인 화면 위젯 설정
@@ -59,11 +128,39 @@ void MainWindow::setupMainScreen()
     centerLayout->setSpacing(20);
     centerLayout->setContentsMargins(30, 30, 30, 30);
     
+    // 타이틀 영역을 위한 수평 레이아웃 생성
+    QHBoxLayout *titleLayout = new QHBoxLayout();
+    titleLayout->setAlignment(Qt::AlignVCenter); // 모든 요소를 수직 중앙에 정렬
+    
+    // 곰돌이 이미지 생성
+    QPixmap bearPixmap = createBearImage();
+    
+    // 왼쪽 곰돌이 이미지 레이블
+    QLabel *leftBearLabel = new QLabel(centerWidget);
+    leftBearLabel->setPixmap(bearPixmap);
+    leftBearLabel->setFixedSize(bearPixmap.size());
+    
     // 타이틀 레이블
     QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333; margin-bottom: 30px;");
-    centerLayout->addWidget(titleLabel);
+    // 하단 마진 제거하고 폰트 크기만 유지
+    titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333;");
+    
+    // 오른쪽 곰돌이 이미지 레이블
+    QLabel *rightBearLabel = new QLabel(centerWidget);
+    rightBearLabel->setPixmap(bearPixmap);
+    rightBearLabel->setFixedSize(bearPixmap.size());
+    
+    // 레이아웃에 위젯 추가 (모두 수직 중앙 정렬로 설정)
+    titleLayout->addWidget(leftBearLabel, 0, Qt::AlignVCenter);
+    titleLayout->addWidget(titleLabel, 1, Qt::AlignVCenter); // 1은 stretch factor, 더 많은 공간을 차지하게 함
+    titleLayout->addWidget(rightBearLabel, 0, Qt::AlignVCenter);
+    
+    // 타이틀 레이아웃에 위아래 여백 추가 (전체적으로 간격 유지)
+    titleLayout->setContentsMargins(0, 0, 0, 20);
+    
+    // 타이틀 레이아웃을 메인 레이아웃에 추가
+    centerLayout->addLayout(titleLayout);
     
     // 버튼 공통 크기 설정
     const int BUTTON_WIDTH = 280;
@@ -81,6 +178,20 @@ void MainWindow::setupMainScreen()
         "}"
         "QPushButton:pressed {"
         "   background-color: #2a66c8;"
+        "}";
+    
+    // 파스텔 연초록 스타일 추가
+    QString greenButtonStyle = 
+        "QPushButton {"
+        "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
+        "   background-color: #8BC34A; color: white; border-radius: 8px;"
+        "   border: none;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #7CB342;"
+        "}"
+        "QPushButton:pressed {"
+        "   background-color: #689F38;"
         "}";
     
     QString redButtonStyle = 
@@ -105,7 +216,7 @@ void MainWindow::setupMainScreen()
     
     // Multi Game 버튼 (새로 추가)
     QPushButton *multiGameButton = new QPushButton("Multi Game", centerWidget);
-    multiGameButton->setStyleSheet(blueButtonStyle);
+    multiGameButton->setStyleSheet(greenButtonStyle);
     multiGameButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
     multiGameButton->setCursor(Qt::PointingHandCursor);
     centerLayout->addWidget(multiGameButton, 0, Qt::AlignCenter);
@@ -163,14 +274,21 @@ void MainWindow::showBingoScreen()
     if (!colorCaptureWidget) {
         qDebug() << "DEBUG: Creating new ColorCaptureWidget";
         colorCaptureWidget = new ColorCaptureWidget(this);
-        connect(colorCaptureWidget, &ColorCaptureWidget::createBingoRequested, 
-                this, &MainWindow::onCreateBingoRequested);
-        connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
-                this, &MainWindow::showMainMenu);
-        
         // 스택 위젯에 추가
         stackedWidget->addWidget(colorCaptureWidget);
     }
+    
+    // 단일 게임 모드로 설정
+    colorCaptureWidget->setGameMode(GameMode::SINGLE);
+    qDebug() << "DEBUG: ColorCaptureWidget set to SINGLE mode";
+    
+    // 기존 연결 해제 후 새로운 연결 설정
+    qDebug() << "DEBUG: Reconnecting signals for Single Game mode";
+    disconnect(colorCaptureWidget, nullptr, this, nullptr); // 기존 모든 연결 해제
+    connect(colorCaptureWidget, &ColorCaptureWidget::createBingoRequested, 
+            this, &MainWindow::onCreateBingoRequested);
+    connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
+            this, &MainWindow::showMainMenu);
     
     // 현재 위젯을 색상 캡처 위젯으로 변경
     stackedWidget->setCurrentWidget(colorCaptureWidget);
@@ -184,7 +302,7 @@ void MainWindow::showBingoScreen()
 // 멀티게임 화면 표시 (새로 추가)
 void MainWindow::showMultiGameScreen()
 {
-    qDebug() << "DEBUG: Single Game button clicked";
+    qDebug() << "DEBUG: Multi Game button clicked";
 
     // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
     if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
@@ -211,14 +329,21 @@ void MainWindow::showMultiGameScreen()
     if (!colorCaptureWidget) {
         qDebug() << "DEBUG: Creating new ColorCaptureWidget";
         colorCaptureWidget = new ColorCaptureWidget(this);
-        connect(colorCaptureWidget, &ColorCaptureWidget::createMultiGameRequested,
-                this, &MainWindow::onCreateMultiGameRequested);
-        connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested,
-                this, &MainWindow::showMainMenu);
-
         // 스택 위젯에 추가
         stackedWidget->addWidget(colorCaptureWidget);
     }
+
+    // 멀티 게임 모드로 설정
+    colorCaptureWidget->setGameMode(GameMode::MULTI);
+    qDebug() << "DEBUG: ColorCaptureWidget set to MULTI mode";
+    
+    // 기존 연결 해제 후 새로운 연결 설정
+    qDebug() << "DEBUG: Reconnecting signals for Multi Game mode";
+    disconnect(colorCaptureWidget, nullptr, this, nullptr); // 기존 모든 연결 해제
+    connect(colorCaptureWidget, &ColorCaptureWidget::createMultiGameRequested,
+            this, &MainWindow::onCreateMultiGameRequested);
+    connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested,
+            this, &MainWindow::showMainMenu);
 
     // 현재 위젯을 색상 캡처 위젯으로 변경
     stackedWidget->setCurrentWidget(colorCaptureWidget);

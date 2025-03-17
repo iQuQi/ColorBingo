@@ -6,6 +6,7 @@
 #include <QStackedWidget>
 #include <QList>
 #include <QColor>
+#include <QPixmap>
 #include "ui/widgets/colorcapturewidget.h"
 #include "ui/widgets/bingowidget.h"
 #include "ui/widgets/multigamewidget.h"
@@ -29,6 +30,7 @@ private:
     void setupMainScreen();
     void updateCenterWidgetPosition();
     bool event(QEvent *event) override;
+    QPixmap createBearImage();
     
     QStackedWidget *stackedWidget;
     QWidget *mainMenu;

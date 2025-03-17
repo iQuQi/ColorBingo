@@ -12,6 +12,12 @@
 #include <QTimer>
 #include "hardwareInterface/v4l2camera.h"
 
+// 게임 모드 열거형 추가
+enum class GameMode {
+    SINGLE,
+    MULTI
+};
+
 class ColorCaptureWidget : public QWidget
 {
     Q_OBJECT
@@ -21,6 +27,10 @@ public:
     ~ColorCaptureWidget();
 
     void stopCameraCapture();
+    
+    // 게임 모드 설정 메서드 추가
+    void setGameMode(GameMode mode);
+    GameMode getGameMode() const { return gameMode; }
 
 signals:
     void createBingoRequested(const QList<QColor> &colors);
@@ -43,6 +53,7 @@ private:
     QWidget *buttonPanel;
     V4L2Camera *camera;
     bool isCapturing;
+    GameMode gameMode; // 현재 게임 모드 저장 변수 추가
 
     void startCamera();
     QList<QColor> captureColorsFromFrame();
