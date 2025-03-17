@@ -20,34 +20,6 @@ P2PNetwork::P2PNetwork(QObject *parent) : QObject(parent), isMatched(false), isM
     connect(matchTimer, &QTimer::timeout, this, &P2PNetwork::sendMatchRequest);
 }
 
-P2PNetwork::~P2PNetwork() {
-    qDebug() << "🛑 Destroying P2PNetwork...";
-
-    isMatched = false;
-    isMatchingActive = false;
-    discoveredBoards.clear();
-
-    // ✅ TCP 클라이언트 소켓 닫기
-    if (clientSocket) {
-        clientSocket->disconnectFromHost();
-        clientSocket->deleteLater();
-    }
-
-    // ✅ TCP 서버 닫기
-    if (server) {
-        server->close();
-        server->deleteLater();
-    }
-
-    // ✅ UDP 소켓 닫기
-    if (udpSocket) {
-        udpSocket->close();
-        udpSocket->deleteLater();
-    }
-
-    qDebug() << "✅ P2PNetwork successfully destroyed!";
-}
-
 // ✅ 랜덤 매칭 시작
 void P2PNetwork::startMatching() {
     discoveredBoards.clear();

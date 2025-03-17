@@ -150,6 +150,7 @@ void MainWindow::showBingoScreen()
     qDebug() << "DEBUG: ColorCaptureWidget now displayed";
 }
 
+//<<<<<<< Updated upstream
 // 멀티게임 화면 표시 (새로 추가)
 void MainWindow::showMultiGameScreen()
 {
@@ -202,11 +203,19 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
             this, &MainWindow::showMainMenu, Qt::QueuedConnection);
     
     // 스택 위젯에 추가 및 현재 위젯으로 설정
-    stackedWidget->addWidget(bingoWidget);
-    stackedWidget->setCurrentWidget(bingoWidget);
-    qDebug() << "DEBUG: BingoWidget now displayed";
+//=======
+   // bingoWidget = new BingoWidget(this);
+   // matchingWidget = new MatchingWidget(this);
+
+   // stackedWidget->addWidget(mainMenu);
+   // stackedWidget->addWidget(matchingWidget);
+//>>>>>>> Stashed changes
+   // stackedWidget->addWidget(bingoWidget);
+   // stackedWidget->setCurrentWidget(bingoWidget);
+   // qDebug() << "DEBUG: BingoWidget now displayed";
 }
 
+//<<<<<<< Updated upstream
 // 메인 메뉴 표시 (이전의 onBingoBackRequested)
 void MainWindow::showMainMenu()
 {
@@ -220,7 +229,33 @@ void MainWindow::showMainMenu()
         stackedWidget->setCurrentWidget(mainMenu);
         qDebug() << "DEBUG: Main menu now displayed";
     });
+//=======
+/*
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->addWidget(stackedWidget);
+    setLayout(mainLayout);
+//    ui->setupUi(this);
+
+
+    // connect(startButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
+    connect(startButton, &QPushButton::clicked, this, [=]() {
+        this->showMatchingScreen();
+        matchingWidget->startMatching();
+
+    });
+    connect(exitButton, &QPushButton::clicked, this, &QWidget::close);
+    //connect(bingoWidget, &BingoWidget::backToMainRequested, this, &MainWindow::showMainMenu);
+    connect(bingoWidget, &BingoWidget::backToMainRequested, this, [=]() {
+        this->showMainMenu();
+        matchingWidget->p2p->disconnectFromPeer();
+    });
+    connect(matchingWidget, &MatchingWidget::switchToBingoScreen, this, &MainWindow::showBingoScreen);
+*/
 }
+
+//void MainWindow::showMatchingScreen() {
+//    stackedWidget->setCurrentWidget(matchingWidget);
+//}
 
 bool MainWindow::event(QEvent *event)
 {
@@ -263,4 +298,9 @@ MainWindow::~MainWindow()
     // 메인 메뉴와 스택 위젯은 Qt가 자동으로 해제
     
     qDebug() << "DEBUG: MainWindow destructor completed";
+
+    delete matchingWidget;
+    delete stackedWidget;
+    delete bingoWidget;
+    delete mainMenu;
 }

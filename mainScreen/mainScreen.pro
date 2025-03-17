@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui network widgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -18,15 +18,19 @@ SOURCES += main.cpp\
         v4l2camera.cpp \
         colorcapturewidget.cpp \
         webcambutton.cpp \
-    	multigamewidget.cpp
+    	multigamewidget.cpp \
+        p2pnetwork.cpp \
+        matchingwidget.cpp
 
 HEADERS  += mainwindow.h \
     bingowidget.h \
     v4l2camera.h \
     colorcapturewidget.h \
     webcambutton.h \
-    multigamewidget.h
+    multigamewidget.h \
+    matchingwidget.h \
+    p2pnetwork.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
 
 LIBS += -lpthread

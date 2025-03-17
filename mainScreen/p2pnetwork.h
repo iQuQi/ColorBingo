@@ -12,7 +12,6 @@ class P2PNetwork : public QObject {
     Q_OBJECT
 public:
     explicit P2PNetwork(QObject *parent = nullptr);
-    ~P2PNetwork();
 
     void startMatching();
     void disconnectFromPeer();

@@ -9,6 +9,7 @@
 #include "colorcapturewidget.h"
 #include "bingowidget.h"
 #include "multigamewidget.h"
+#include "matchingwidget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -19,6 +20,7 @@ public:
     ~MainWindow();
 
 private slots:
+    void showMatchingScreen();
     void showBingoScreen();
     void showMultiGameScreen();
     void showMainMenu();
@@ -35,6 +37,7 @@ private:
     ColorCaptureWidget *colorCaptureWidget;
     BingoWidget *bingoWidget;
     MultiGameWidget *multiGameWidget;
+    MatchingWidget *matchingWidget;
 };
 
 #endif // MAINWINDOW_H
