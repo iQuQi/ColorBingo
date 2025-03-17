@@ -10,6 +10,7 @@
 #include "hardwareInterface/webcambutton.h"
 #include <QShowEvent>
 #include <QHideEvent>
+#include "../../hardwareInterface/SoundManager.h"
 
 BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
     isCapturing(false),
@@ -969,6 +970,9 @@ void BingoWidget::onCaptureButtonClicked() {
                 sliderWidget->hide();
             }
         }
+        
+        // 성공 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
     } else {  // 색상이 다름 - X 표시 (개선된 코드)
         qDebug() << "Color match failed - drawing X mark";
         
@@ -1013,6 +1017,9 @@ void BingoWidget::onCaptureButtonClicked() {
             }
             statusMessageLabel->setText("Try again or select another cell");
         });
+        
+        // 실패 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
     }
 }
 
@@ -1032,6 +1039,8 @@ void BingoWidget::clearXMark() {
 }
 
 void BingoWidget::updateBingoScore() {
+    int oldBingoCount = bingoCount;
+    
     bingoCount = 0;
     
     // 가로줄 확인
@@ -1060,6 +1069,11 @@ void BingoWidget::updateBingoScore() {
     
     // 빙고 점수 표시 업데이트 (영어로 변경)
     bingoScoreLabel->setText(QString("Bingo: %1").arg(bingoCount));
+
+    if (bingoCount > oldBingoCount) {
+        // 빙고 완성시에는 효과음 없음
+        qDebug() << "빙고 완성! (bingoCount: " << bingoCount << ")";
+    }
     
     // 빙고 완성시 축하 메시지
     if (bingoCount > 0) {
@@ -1068,7 +1082,7 @@ void BingoWidget::updateBingoScore() {
     } else {
         bingoScoreLabel->setStyleSheet("");
     }
-    
+
     // 3빙고 이상 달성 확인
     if (bingoCount >= 3) {
         // SUCCESS 메시지 표시
@@ -1083,14 +1097,43 @@ void BingoWidget::showSuccessMessage() {
     successLabel->raise(); // 다른 위젯 위에 표시
     successLabel->show();
     
-    // 1초 후 메시지 숨기고 게임 초기화
-    successTimer->start(1000);
+    // 5초 후 메시지 숨기고 게임 초기화 (효과음이 완전히 재생될 때까지 대기)
+    successTimer->start(5000);
+    
+    // 성공 효과음 재생
+    SoundManager::getInstance()->playEffect(SoundManager::SUCCESS_SOUND);
 }
 
 // 새로운 함수 추가: 성공 메시지 숨기고 게임 초기화
 void BingoWidget::hideSuccessAndReset() {
     successLabel->hide();
-    resetGame();
+    
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: BingoWidget - Stopping game timer in hideSuccessAndReset";
+        gameTimer->stop();
+    }
+    
+    // 게임 상태만 초기화 (타이머 재시작하지 않음)
+    // 빙고 상태 초기화
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            bingoStatus[row][col] = false;
+            bingoCells[row][col]->clear();  // 모든 내용 지우기
+            bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);  // 여백 초기화
+            
+            // 색상은 유지하고 스타일만 업데이트
+            updateCellStyle(row, col);
+        }
+    }
+    
+    // 빙고 점수 초기화
+    bingoCount = 0;
+    bingoScoreLabel->setText("Bingo: 0");
+    bingoScoreLabel->setStyleSheet("");
+    
+    // 선택된 셀 초기화
+    selectedCell = qMakePair(-1, -1);
     
     // 메인 화면으로 돌아가는 신호 발생
     emit backToMainRequested();
@@ -1153,6 +1196,12 @@ void BingoWidget::onBackButtonClicked() {
     if (isCapturing) {
         qDebug() << "DEBUG: BingoWidget - Stopping camera before emitting back signal";
         stopCamera();
+    }
+    
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: BingoWidget - Stopping game timer before emitting back signal";
+        gameTimer->stop();
     }
     
     qDebug() << "DEBUG: BingoWidget - Emitting backToMainRequested signal";
@@ -1333,8 +1382,11 @@ void BingoWidget::showFailMessage() {
     failLabel->raise(); // 다른 위젯 위에 표시
     failLabel->show();
     
-    // 2초 후 메시지 숨기고 메인 화면으로 돌아가기
-    QTimer::singleShot(2000, this, &BingoWidget::hideFailAndReset);
+    // 5초 후 메시지 숨기고 메인 화면으로 돌아가기 (효과음이 완전히 재생될 때까지 대기)
+    QTimer::singleShot(5000, this, &BingoWidget::hideFailAndReset);
+    
+    // 실패 효과음 재생
+    SoundManager::getInstance()->playEffect(SoundManager::FAIL_SOUND);
 }
 
 // 실패 메시지 숨기고 게임 초기화
@@ -1346,8 +1398,32 @@ void BingoWidget::hideFailAndReset() {
         stopCamera();
     }
     
-    // 게임 상태 초기화
-    resetGame();
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: BingoWidget - Stopping game timer in hideFailAndReset";
+        gameTimer->stop();
+    }
+    
+    // 게임 상태만 초기화 (타이머 재시작하지 않음)
+    // 빙고 상태 초기화
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            bingoStatus[row][col] = false;
+            bingoCells[row][col]->clear();  // 모든 내용 지우기
+            bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);  // 여백 초기화
+            
+            // 색상은 유지하고 스타일만 업데이트
+            updateCellStyle(row, col);
+        }
+    }
+    
+    // 빙고 점수 초기화
+    bingoCount = 0;
+    bingoScoreLabel->setText("Bingo: 0");
+    bingoScoreLabel->setStyleSheet("");
+    
+    // 선택된 셀 초기화
+    selectedCell = qMakePair(-1, -1);
     
     // 메인 화면으로 돌아가는 신호 발생
     emit backToMainRequested();
@@ -1452,9 +1528,16 @@ void BingoWidget::hideEvent(QHideEvent *event)
     QWidget::hideEvent(event);
     qDebug() << "DEBUG: BingoWidget hideEvent triggered";
 
+    // 카메라 중지 및 닫기
     if(camera) {
         stopCamera();
         camera->closeCamera();
+    }
+    
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: BingoWidget - Stopping game timer in hideEvent";
+        gameTimer->stop();
     }
 }
 

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "hardwareInterface/SoundManager.h"
 #include <QDebug>
 #include <QThread>
 #include <QRandomGenerator>
@@ -31,6 +32,9 @@ MainWindow::MainWindow(QWidget *parent) :
     // 메인 메뉴를 스택 위젯에 추가
     stackedWidget->addWidget(mainMenu);
     stackedWidget->setCurrentWidget(mainMenu);
+
+    // 배경음악 시작
+    SoundManager::getInstance()->playBackgroundMusic();
     
     qDebug() << "MainWindow 생성 완료, mainMenu 크기:" << mainMenu->size();
     qDebug() << "stackedWidget 크기:" << stackedWidget->size();
@@ -340,6 +344,9 @@ MainWindow::~MainWindow()
         delete multiGameWidget;
         multiGameWidget = nullptr;
     }
+
+    // 사운드 리소스 정리
+    SoundManager::getInstance()->cleanup();
     
     // 메인 메뉴와 스택 위젯은 Qt가 자동으로 해제
     
