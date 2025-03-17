@@ -25,6 +25,7 @@ private slots:
     void showMultiGameScreen();
     void showMainMenu();
     void onCreateBingoRequested(const QList<QColor> &colors);
+    void onCreateMultiGameRequested(const QList<QColor> &colors);
 
 private:
     void setupMainScreen();

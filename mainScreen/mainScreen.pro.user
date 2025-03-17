@@ -4,7 +4,11 @@
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
+<<<<<<< HEAD
   <value type="QByteArray">{e5931a8b-02e0-4a2a-9cc8-9182e8b1eb08}</value>
+=======
+  <value type="QByteArray">{5a4c1aa8-9eaf-4873-be8a-4885af65b2a9}</value>
+>>>>>>> 219f2655a8325049dc9d1f5cf95d8c5805b89c99
  </data>
  <data>
   <variable>ProjectExplorer.Project.ActiveTarget</variable>
@@ -60,7 +64,11 @@
   <valuemap type="QVariantMap">
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">qt-embedded</value>
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">qt-embedded</value>
+<<<<<<< HEAD
    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{32481a64-8a24-40bd-a224-64a4cb6aef26}</value>
+=======
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">{fa077863-32e0-4dea-930e-b9f33afa07a5}</value>
+>>>>>>> 219f2655a8325049dc9d1f5cf95d8c5805b89c99
    <value type="int" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
    <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
