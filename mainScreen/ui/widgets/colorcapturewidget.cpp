@@ -13,7 +13,8 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     QWidget(parent),
     buttonPanel(nullptr),
     camera(nullptr),
-    isCapturing(false)
+    isCapturing(false),
+    gameMode(GameMode::SINGLE)  // 기본값으로 SINGLE 모드 설정
 {
     qDebug() << "DEBUG: ColorCaptureWidget constructor starting";
     
@@ -246,8 +247,14 @@ void ColorCaptureWidget::onCreateBingoClicked()
     // 색상 추출
     QList<QColor> capturedColors = captureColorsFromFrame();
     
-    // 색상 리스트와 함께 빙고 생성 요청 시그널 발생
-    emit createBingoRequested(capturedColors);
+    // 게임 모드에 따라 적절한 시그널 발생
+    if (gameMode == GameMode::SINGLE) {
+        qDebug() << "DEBUG: Emitting createBingoRequested for SINGLE mode";
+        emit createBingoRequested(capturedColors);
+    } else {
+        qDebug() << "DEBUG: Emitting createMultiGameRequested for MULTI mode";
+        emit createMultiGameRequested(capturedColors);
+    }
 }
 
 void ColorCaptureWidget::onBackButtonClicked() 
@@ -355,4 +362,56 @@ QList<QColor> ColorCaptureWidget::captureColorsFromFrame()
     }
     
     return capturedColors;  // 정확히 9개의 색상 반환
+}
+
+// setGameMode 메서드 구현
+void ColorCaptureWidget::setGameMode(GameMode mode) 
+{
+    gameMode = mode;
+    
+    // buttonPanel 내의 Create Bingo 버튼 찾기
+    if (buttonPanel) {
+        QList<QPushButton*> buttons = buttonPanel->findChildren<QPushButton*>();
+        for (QPushButton* button : buttons) {
+            if (button->text() == "Create Bingo") {
+                // 파란색 스타일로 버튼 디자인
+                QString createButtonStyle = 
+                    "QPushButton {"
+                    "   font-size: 18px; font-weight: bold; "
+                    "   background-color: #4a86e8; color: white; "
+                    "   border-radius: 6px; "
+                    "}"
+                    "QPushButton:hover {"
+                    "   background-color: #3a76d8; "
+                    "}"
+                    "QPushButton:pressed {"
+                    "   background-color: #2a66c8; "
+                    "}";
+                
+                // 파스텔 연초록 스타일 (멀티 게임용)
+                QString createButtonGreenStyle = 
+                    "QPushButton {"
+                    "   font-size: 18px; font-weight: bold; "
+                    "   background-color: #8BC34A; color: white; "
+                    "   border-radius: 6px; "
+                    "}"
+                    "QPushButton:hover {"
+                    "   background-color: #7CB342; "
+                    "}"
+                    "QPushButton:pressed {"
+                    "   background-color: #689F38; "
+                    "}";
+                
+                // 게임 모드에 따라 스타일 설정
+                if (gameMode == GameMode::MULTI) {
+                    qDebug() << "DEBUG: Setting green style for Create Bingo button (MULTI mode)";
+                    button->setStyleSheet(createButtonGreenStyle);
+                } else {
+                    qDebug() << "DEBUG: Setting blue style for Create Bingo button (SINGLE mode)";
+                    button->setStyleSheet(createButtonStyle);
+                }
+                break;
+            }
+        }
+    }
 } 
