@@ -1,5 +1,5 @@
-#ifndef COLORCAPTUREWIDGET_H
-#define COLORCAPTUREWIDGET_H
+#ifndef BINGOPREPARATIONWIDGET_H
+#define BINGOPREPARATIONWIDGET_H
 
 #include <QWidget>
 #include <QLabel>
@@ -18,13 +18,13 @@ enum class GameMode {
     MULTI
 };
 
-class ColorCaptureWidget : public QWidget
+class BingoPreparationWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ColorCaptureWidget(QWidget *parent = nullptr);
-    ~ColorCaptureWidget();
+    explicit BingoPreparationWidget(QWidget *parent = nullptr);
+    ~BingoPreparationWidget();
 
     void stopCameraCapture();
     
@@ -60,4 +60,4 @@ private:
     QList<QColor> captureColorsFromFrame();
 };
 
-#endif // COLORCAPTUREWIDGET_H 
+#endif // BINGOPREPARATIONWIDGET_H 

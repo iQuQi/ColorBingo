@@ -1,4 +1,4 @@
-#include "ui/widgets/colorcapturewidget.h"
+#include "ui/widgets/bingopreparationwidget.h"
 #include <QDebug>
 #include <QMessageBox>
 #include <QPainter>
@@ -9,14 +9,14 @@
 #include <QShowEvent>
 #include <QHideEvent>
 
-ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
+BingoPreparationWidget::BingoPreparationWidget(QWidget *parent) :
     QWidget(parent),
     buttonPanel(nullptr),
     camera(nullptr),
     isCapturing(false),
     gameMode(GameMode::SINGLE)  // 기본값으로 SINGLE 모드 설정
 {
-    qDebug() << "DEBUG: ColorCaptureWidget constructor starting";
+    qDebug() << "DEBUG: BingoPreparationWidget constructor starting";
     
     // 레이아웃 없이 절대 위치로 구성
     setLayout(nullptr);
@@ -30,23 +30,24 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     // 버튼 패널 생성 (떠 있는 형태)
     buttonPanel = new QWidget(this);
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonPanel);
-    buttonLayout->setSpacing(15);
-    buttonLayout->setContentsMargins(15, 10, 15, 10);
+    buttonLayout->setSpacing(20);
+    buttonLayout->setContentsMargins(20, 15, 20, 15);
     
     // 버튼 생성
     QPushButton *createBingoButton = new QPushButton("Create Bingo", buttonPanel);
     QPushButton *backButton = new QPushButton("Back", buttonPanel);
     
-    // 버튼 크기 설정
-    createBingoButton->setFixedSize(180, 50);
-    backButton->setFixedSize(120, 50);
+    // 버튼 크기 설정 - 더 크게 조정
+    createBingoButton->setFixedSize(220, 70);  // 180,50 -> 220,70으로 키움
+    backButton->setFixedSize(150, 70);         // 120,50 -> 150,70으로 키움
     
-    // 파란색 스타일로 버튼 디자인
+    // 파란색 스타일로 버튼 디자인 - 글씨 크기 키우고 굵게
     QString createButtonStyle = 
         "QPushButton {"
-        "   font-size: 18px; font-weight: bold; "
+        "   font-size: 22px; font-weight: bold; "  // 18px -> 22px
         "   background-color: #4a86e8; color: white; "
-        "   border-radius: 6px; "
+        "   border-radius: 8px; "                  // 6px -> 8px
+        "   padding: 5px; "                        // 패딩 추가
         "}"
         "QPushButton:hover {"
         "   background-color: #3a76d8; "
@@ -57,9 +58,10 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     
     QString backButtonStyle = 
         "QPushButton {"
-        "   font-size: 18px; font-weight: bold; "
+        "   font-size: 22px; font-weight: bold; "  // 18px -> 22px
         "   background-color: #9e9e9e; color: white; "
-        "   border-radius: 6px; "
+        "   border-radius: 8px; "                  // 6px -> 8px
+        "   padding: 5px; "                        // 패딩 추가
         "}"
         "QPushButton:hover {"
         "   background-color: #8e8e8e; "
@@ -78,15 +80,15 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
     buttonPanel->setStyleSheet("background-color: rgba(30, 30, 30, 180); border-radius: 10px;");
     
     // 시그널 연결
-    connect(createBingoButton, &QPushButton::clicked, this, &ColorCaptureWidget::onCreateBingoClicked);
-    connect(backButton, &QPushButton::clicked, this, &ColorCaptureWidget::onBackButtonClicked);
+    connect(createBingoButton, &QPushButton::clicked, this, &BingoPreparationWidget::onCreateBingoClicked);
+    connect(backButton, &QPushButton::clicked, this, &BingoPreparationWidget::onBackButtonClicked);
     
     // 카메라 초기화
     camera = new V4L2Camera(this);
     
     // 카메라 신호 연결
-    connect(camera, &V4L2Camera::newFrameAvailable, this, &ColorCaptureWidget::updateCameraFrame);
-    connect(camera, &V4L2Camera::deviceDisconnected, this, &ColorCaptureWidget::handleCameraDisconnect);
+    connect(camera, &V4L2Camera::newFrameAvailable, this, &BingoPreparationWidget::updateCameraFrame);
+    connect(camera, &V4L2Camera::deviceDisconnected, this, &BingoPreparationWidget::handleCameraDisconnect);
     
     // 초기 사이즈 설정
     resize(parent->size());
@@ -98,13 +100,13 @@ ColorCaptureWidget::ColorCaptureWidget(QWidget *parent) :
         qDebug() << "Camera opened successfully";
     }
     
-    qDebug() << "DEBUG: ColorCaptureWidget constructor completed";
+    qDebug() << "DEBUG: BingoPreparationWidget constructor completed";
 }
 
-void ColorCaptureWidget::showEvent(QShowEvent* event)
+void BingoPreparationWidget::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
-    qDebug() << "DEBUG: ColorCaptureWidget showEvent triggered";
+    qDebug() << "DEBUG: BingoPreparationWidget showEvent triggered";
     
     // 위젯이 보여질 때 카메라 시작
     startCamera();
@@ -117,16 +119,16 @@ void ColorCaptureWidget::showEvent(QShowEvent* event)
     });
 }
 
-void ColorCaptureWidget::hideEvent(QHideEvent* event)
+void BingoPreparationWidget::hideEvent(QHideEvent* event)
 {
     QWidget::hideEvent(event);
-    qDebug() << "DEBUG: ColorCaptureWidget hideEvent triggered";
+    qDebug() << "DEBUG: BingoPreparationWidget hideEvent triggered";
     
     // 위젯이 숨겨질 때 카메라 중지
     stopCameraCapture();
 }
 
-void ColorCaptureWidget::startCamera() 
+void BingoPreparationWidget::startCamera() 
 {
     qDebug() << "DEBUG: startCamera called";
     
@@ -165,7 +167,7 @@ void ColorCaptureWidget::startCamera()
     }
 }
 
-void ColorCaptureWidget::stopCameraCapture() 
+void BingoPreparationWidget::stopCameraCapture() 
 {
     qDebug() << "DEBUG: Stopping camera capture";
     
@@ -183,7 +185,7 @@ void ColorCaptureWidget::stopCameraCapture()
     }
 }
 
-void ColorCaptureWidget::updateCameraFrame() 
+void BingoPreparationWidget::updateCameraFrame() 
 {
     if (!camera || !cameraView) return;
     
@@ -200,7 +202,7 @@ void ColorCaptureWidget::updateCameraFrame()
     }
 }
 
-void ColorCaptureWidget::resizeEvent(QResizeEvent* event) 
+void BingoPreparationWidget::resizeEvent(QResizeEvent* event) 
 {
     QWidget::resizeEvent(event);
     
@@ -222,7 +224,7 @@ void ColorCaptureWidget::resizeEvent(QResizeEvent* event)
     updateCameraFrame();
 }
 
-void ColorCaptureWidget::handleCameraDisconnect()
+void BingoPreparationWidget::handleCameraDisconnect()
 {
     static bool isTransitioning = false;
     
@@ -256,7 +258,7 @@ void ColorCaptureWidget::handleCameraDisconnect()
     });
 }
 
-void ColorCaptureWidget::onCreateBingoClicked() 
+void BingoPreparationWidget::onCreateBingoClicked() 
 {
     qDebug() << "DEBUG: Create Bingo button clicked";
     
@@ -273,7 +275,7 @@ void ColorCaptureWidget::onCreateBingoClicked()
     }
 }
 
-void ColorCaptureWidget::onCreateMultiGameClicked()
+void BingoPreparationWidget::onCreateMultiGameClicked()
 {
     qDebug() << "DEBUG: Create Bingo button clicked";
 
@@ -284,7 +286,7 @@ void ColorCaptureWidget::onCreateMultiGameClicked()
     emit createMultiGameRequested(capturedColors);
 }
 
-void ColorCaptureWidget::onBackButtonClicked() 
+void BingoPreparationWidget::onBackButtonClicked() 
 {
     static bool isTransitioning = false;
     
@@ -299,7 +301,7 @@ void ColorCaptureWidget::onBackButtonClicked()
     qDebug() << "DEBUG: Back button clicked";
     stopCameraCapture();
     
-    qDebug() << "DEBUG: Emitting backToMainRequested signal from ColorCaptureWidget";
+    qDebug() << "DEBUG: Emitting backToMainRequested signal from BingoPreparationWidget";
     emit backToMainRequested();
     
     // 전환 상태 재설정 (딜레이 후 리셋)
@@ -309,9 +311,9 @@ void ColorCaptureWidget::onBackButtonClicked()
 }
 
 // 소멸자
-ColorCaptureWidget::~ColorCaptureWidget() 
+BingoPreparationWidget::~BingoPreparationWidget() 
 {
-    qDebug() << "DEBUG: ColorCaptureWidget destructor called";
+    qDebug() << "DEBUG: BingoPreparationWidget destructor called";
     stopCameraCapture();
     
     // 카메라 객체 정리
@@ -320,10 +322,10 @@ ColorCaptureWidget::~ColorCaptureWidget()
         // camera는 QObject 상속이므로 자동으로 제거됨
     }
     
-    qDebug() << "DEBUG: ColorCaptureWidget destructor completed";
+    qDebug() << "DEBUG: BingoPreparationWidget destructor completed";
 }
 
-QList<QColor> ColorCaptureWidget::captureColorsFromFrame()
+QList<QColor> BingoPreparationWidget::captureColorsFromFrame()
 {
     QList<QColor> capturedColors;
     
@@ -409,7 +411,7 @@ QList<QColor> ColorCaptureWidget::captureColorsFromFrame()
 }
 
 // setGameMode 메서드 구현
-void ColorCaptureWidget::setGameMode(GameMode mode) 
+void BingoPreparationWidget::setGameMode(GameMode mode) 
 {
     gameMode = mode;
     
@@ -421,9 +423,10 @@ void ColorCaptureWidget::setGameMode(GameMode mode)
                 // 파란색 스타일로 버튼 디자인
                 QString createButtonStyle = 
                     "QPushButton {"
-                    "   font-size: 18px; font-weight: bold; "
+                    "   font-size: 22px; font-weight: bold; "  // 18px -> 22px
                     "   background-color: #4a86e8; color: white; "
-                    "   border-radius: 6px; "
+                    "   border-radius: 8px; "                  // 6px -> 8px
+                    "   padding: 5px; "                        // 패딩 추가
                     "}"
                     "QPushButton:hover {"
                     "   background-color: #3a76d8; "
@@ -435,9 +438,10 @@ void ColorCaptureWidget::setGameMode(GameMode mode)
                 // 파스텔 연초록 스타일 (멀티 게임용)
                 QString createButtonGreenStyle = 
                     "QPushButton {"
-                    "   font-size: 18px; font-weight: bold; "
+                    "   font-size: 22px; font-weight: bold; "  // 업데이트된 사이즈
                     "   background-color: #8BC34A; color: white; "
-                    "   border-radius: 6px; "
+                    "   border-radius: 8px; "                  // 업데이트된 radius
+                    "   padding: 5px; "                        // 패딩 추가
                     "}"
                     "QPushButton:hover {"
                     "   background-color: #7CB342; "

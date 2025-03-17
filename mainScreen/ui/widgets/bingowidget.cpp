@@ -1,4 +1,4 @@
-#include "ui/widgets/bingowidget.h"
+#include "bingowidget.h"
 #include <QDebug>
 #include <QMessageBox>
 #include <QPainter>
@@ -10,7 +10,8 @@
 #include "hardwareInterface/webcambutton.h"
 #include <QShowEvent>
 #include <QHideEvent>
-#include "../../hardwareInterface/SoundManager.h"
+#include "hardwareInterface/SoundManager.h"
+#include "../../utils/pixelartgenerator.h"
 
 BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
     isCapturing(false),
@@ -198,49 +199,21 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     QFont sliderFont = circleLabel->font();
     sliderFont.setPointSize(11);
     circleLabel->setFont(sliderFont);
-    
-    // 예쁜 디자인으로 슬라이더 생성
-    circleSlider = new QSlider(Qt::Horizontal);
-    circleSlider->setMinimum(5);
-    circleSlider->setMaximum(20);
-    circleSlider->setValue(circleRadius);
-    circleSlider->setStyleSheet(
-        "QSlider::groove:horizontal {"
-        "    border: 1px solid #999999;"
-        "    height: 8px;"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
-        "    margin: 2px 0;"
-        "    border-radius: 4px;"
-        "}"
-        "QSlider::handle:horizontal {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4a86e8, stop:1 #275ead);"
-        "    border: 1px solid #5c5c5c;"
-        "    width: 18px;"
-        "    margin: -6px 0;"
-        "    border-radius: 9px;"
-        "}"
-        "QSlider::handle:horizontal:hover {"
-        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #5c9afc, stop:1 #3a75d7);"
-        "}"
-    );
-    
-    // 예쁜 스타일의 값 라벨 생성
-    circleValueLabel = new QLabel(QString::number(circleRadius));
-    circleValueLabel->setAlignment(Qt::AlignCenter);
-    circleValueLabel->setStyleSheet(
-        "background-color: rgb(0, 255, 0);" // 초기 색상, updateCameraFrame에서 업데이트됨
-        "color: white;"
-        "border-radius: 10px;"
-        "padding: 3px 8px;"
-        "min-width: 30px;"
-        "font-weight: bold;"
-    );
-    circleValueLabel->setFont(sliderFont);
-    
     circleSliderLayout->addWidget(circleLabel);
+
+    circleSlider = new QSlider(Qt::Horizontal);
+    circleSlider->setRange(5, 50); // 최소 5px, 최대 50px
+    circleSlider->setValue(circleRadius);
+    circleSlider->setFixedWidth(150);
     circleSliderLayout->addWidget(circleSlider);
+
+    circleValueLabel = new QLabel(QString::number(circleRadius));
+    circleValueLabel->setFont(sliderFont);
+    circleValueLabel->setFixedWidth(30);
+    circleValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     circleSliderLayout->addWidget(circleValueLabel);
 
+    // 슬라이더 레이아웃을 카메라 레이아웃에 추가
     cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
 
     // Add stretch for vertical centering
@@ -293,27 +266,47 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     // 슬라이더 설정
     circleSlider->setMinimumHeight(30);
 
-    // 픽셀 스타일 곰돌이 이미지 생성 (별도 함수로 분리)
-    bearImage = createBearImage();
-    xImage = createXImage(); 
+    // X 이미지 생성
+    xImage = PixelArtGenerator::getInstance()->createXImage();
+
+    // 곰돌이 이미지 생성
+    bearImage = PixelArtGenerator::getInstance()->createBearImage();
+    
     qDebug() << "Basic variable initialization completed";
 
     // Back 버튼 설정
     backButton = new QPushButton("Back", this);
-    backButton->setFixedSize(80, 30); // 버튼 크기 고정
+    backButton->setFixedSize(120, 50); // 버튼 크기 증가 (80,30 -> 120,50)
     connect(backButton, &QPushButton::clicked, this, &BingoWidget::onBackButtonClicked);
 
     // Restart 버튼 추가
     restartButton = new QPushButton("Restart", this);
-    restartButton->setFixedSize(80, 30); // 버튼 크기 고정
+    restartButton->setFixedSize(120, 50); // 버튼 크기 증가 (80,30 -> 120,50)
     connect(restartButton, &QPushButton::clicked, this, &BingoWidget::onRestartButtonClicked);
 
-    // 버튼 스타일 변경 - 진회색 배경으로 수정
-    QString buttonStyle = "QPushButton { background-color: rgba(50, 50, 50, 200); color: white; "
-                         "border-radius: 4px; font-weight: bold; } "
-                         "QPushButton:hover { background-color: rgba(70, 70, 70, 220); }";
-    backButton->setStyleSheet(buttonStyle);
-    restartButton->setStyleSheet(buttonStyle);
+    // 픽셀 스타일 적용
+    QString backButtonStyle = PixelArtGenerator::getInstance()->createPixelButtonStyle(
+        QColor(50, 50, 50, 200), // 어두운 회색
+        2,   // 얇은 테두리
+        12    // 타이머와 동일한 라운드 코너
+    );
+    
+    QString restartButtonStyle = PixelArtGenerator::getInstance()->createPixelButtonStyle(
+        QColor(70, 70, 70, 200), // 조금 더 밝은 회색
+        2,    // 얇은 테두리
+        12     // 타이머와 동일한 라운드 코너
+    );
+    
+    // 버튼 폰트 크기 조정 (버튼 크기 증가에 맞게 폰트 크기도 증가)
+    backButtonStyle.replace("font-size: 24px", "font-size: 18px");
+    restartButtonStyle.replace("font-size: 24px", "font-size: 18px");
+    
+    // 패딩 조정 (더 큰 버튼에 맞게 패딩 증가)
+    backButtonStyle.replace("padding: 15px 30px", "padding: 10px 20px");
+    restartButtonStyle.replace("padding: 15px 30px", "padding: 10px 20px");
+    
+    backButton->setStyleSheet(backButtonStyle);
+    restartButton->setStyleSheet(restartButtonStyle);
 
     // 초기 위치 설정
     updateBackButtonPosition();
@@ -326,6 +319,7 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     // 타이머 레이블 초기화
     timerLabel = new QLabel(this);
     timerLabel->setAlignment(Qt::AlignCenter);
+    timerLabel->setFixedSize(QSize(140, 60)); // 크기 설정: 너비 140px, 음량 버튼과 동일한 높이 60px
     timerLabel->setStyleSheet("QLabel { background-color: rgba(50, 50, 50, 200); color: white; "
                              "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
     
@@ -1160,8 +1154,10 @@ void BingoWidget::updateBingoScore() {
         bingoScoreLabel->setStyleSheet("");
     }
 
-    // 3빙고 이상 달성 확인
+    // 3빙고 이상 달성 확인 - 디버그 로그 추가 및 가시성 향상
+    qDebug() << "DEBUG: Current bingo count:" << bingoCount;
     if (bingoCount >= 3) {
+        qDebug() << "DEBUG: 3빙고 이상 달성! 성공 메시지 표시";
         // SUCCESS 메시지 표시
         showSuccessMessage();
     }
@@ -1169,16 +1165,65 @@ void BingoWidget::updateBingoScore() {
 
 // 새로운 함수 추가: 성공 메시지 표시 및 게임 초기화
 void BingoWidget::showSuccessMessage() {
+    qDebug() << "DEBUG: showSuccessMessage 함수 시작";
+    
+    // 성공 메시지 레이블 초기화 및 표시
+    successLabel->setVisible(true);
+    successLabel->raise(); // 다른 위젯 위에 표시
+    
     // 성공 메시지 레이블 크기 설정 (전체 위젯 크기로)
     successLabel->setGeometry(0, 0, width(), height());
-    successLabel->raise(); // 다른 위젯 위에 표시
-    successLabel->show();
+    
+    // 배경과 텍스트가 포함된 픽스맵 생성
+    QPixmap combinedPixmap(width(), height());
+    combinedPixmap.fill(QColor(0, 0, 0, 150)); // 반투명 검은색 배경
+    
+    // 트로피 이미지 가져오기
+    QPixmap trophyPixelArt = PixelArtGenerator::getInstance()->createTrophyPixelArt();
+    
+    // 이미지와 텍스트를 합성할 페인터 생성
+    QPainter painter(&combinedPixmap);
+    
+    // 텍스트 설정
+    QFont font = painter.font();
+    font.setPointSize(64);
+    font.setBold(true);
+    painter.setFont(font);
+    painter.setPen(Qt::white);
+    
+    // 텍스트 크기 계산
+    QFontMetrics fm(font);
+    QRect textRect = fm.boundingRect("SUCCESS");
+    
+    // 이미지와 텍스트의 전체 너비 계산
+    int totalWidth = trophyPixelArt.width() + textRect.width() + 30; // 30px의 간격 추가
+    
+    // 시작 x 위치 계산 (화면 중앙에 배치)
+    int startX = (width() - totalWidth) / 2;
+    int centerY = height() / 2;
+    
+    // 텍스트 그리기 (이미지 왼쪽에)
+    painter.drawText(QRect(startX, centerY - 50, textRect.width(), 100), Qt::AlignVCenter, "SUCCESS");
+    
+    // 트로피 이미지 그리기 (텍스트 오른쪽에)
+    int trophyX = startX + textRect.width() + 30; // 텍스트 오른쪽에 30px 간격 추가
+    int trophyY = centerY - trophyPixelArt.height() / 2;
+    painter.drawPixmap(trophyX, trophyY, trophyPixelArt);
+    
+    // 합성 완료
+    painter.end();
+    
+    // 결과물을 레이블에 설정
+    successLabel->setPixmap(combinedPixmap);
+    qDebug() << "DEBUG: 트로피 이미지와 SUCCESS 텍스트 설정 완료";
     
     // 5초 후 메시지 숨기고 게임 초기화 (효과음이 완전히 재생될 때까지 대기)
     successTimer->start(5000);
+    qDebug() << "DEBUG: 성공 타이머 시작, 5초 후 메시지 사라짐";
     
     // 성공 효과음 재생
     SoundManager::getInstance()->playEffect(SoundManager::SUCCESS_SOUND);
+    qDebug() << "DEBUG: 성공 효과음 재생";
 }
 
 // 새로운 함수 추가: 성공 메시지 숨기고 게임 초기화
@@ -1285,38 +1330,6 @@ void BingoWidget::onBackButtonClicked() {
     emit backToMainRequested();
 }
 
-QPixmap BingoWidget::createXImage() {
-    qDebug() << "Creating smooth line-based X mark";
-    
-    // Create X image with transparent background
-    QPixmap xImg(100, 100);
-    xImg.fill(Qt::transparent);
-    
-    QPainter painter(&xImg);
-    // 선을 부드럽게 그리기 위해 안티앨리어싱 활성화
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    
-    // 선 두께와 색상 설정
-    QPen pen(Qt::white);
-    pen.setWidth(8);  // 선 두께 설정
-    pen.setCapStyle(Qt::RoundCap);  // 선 끝을 둥글게
-    pen.setJoinStyle(Qt::RoundJoin);  // 선 연결 부분을 둥글게
-    painter.setPen(pen);
-    
-    // 중심점 계산
-    const int center = 50;  // 100x100 이미지의 중심
-    const int padding = 20;  // 외곽 여백
-    
-    // 대각선 두 개 그리기
-    painter.drawLine(padding, padding, 100-padding, 100-padding);  // 왼쪽 위에서 오른쪽 아래로
-    painter.drawLine(100-padding, padding, padding, 100-padding);  // 오른쪽 위에서 왼쪽 아래로
-    
-    painter.end();
-    
-    qDebug() << "Smooth line-based X mark created successfully";
-    return xImg;
-}
-
 // Add a separate color correction function
 QColor BingoWidget::correctBluecast(const QColor &color) {
     qDebug() << "Correcting color cast: input RGB=" << color.red() << "," << color.green() << "," << color.blue();
@@ -1416,16 +1429,16 @@ void BingoWidget::updateTimerDisplay() {
                                  "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
     }
     
-    // 타이머 레이블 크기 및 위치 조정
-    timerLabel->adjustSize();
+    // 타이머 위치 업데이트
     updateTimerPosition();
 }
 
 // 타이머 위치 업데이트
 void BingoWidget::updateTimerPosition() {
     if (timerLabel) {
-        // 화면 상단 중앙에 배치
-        timerLabel->move((width() - timerLabel->width()) / 2, 10);
+        // 타이머를 화면 중앙 상단에 배치, 상단 여백(20px)은 유지하면서 수평으로 중앙 정렬
+        int margin = 20;
+        timerLabel->move((width() - timerLabel->width()) / 2, margin);
         timerLabel->raise(); // 다른 위젯 위에 표시
     }
 }
@@ -1449,18 +1462,68 @@ void BingoWidget::stopGameTimer() {
 
 // 실패 메시지 표시
 void BingoWidget::showFailMessage() {
+    qDebug() << "DEBUG: showFailMessage 함수 시작";
+    
     // 카메라가 실행 중이면 중지
     if (isCapturing) {
         stopCamera();
     }
     
+    // 실패 메시지 레이블 초기화 및 표시
+    failLabel->setVisible(true);
+    failLabel->raise(); // 다른 위젯 위에 표시
+    
     // 실패 메시지 레이블 크기와 위치 설정
     failLabel->setGeometry(0, 0, width(), height());
-    failLabel->raise(); // 다른 위젯 위에 표시
     failLabel->show();
+    qDebug() << "DEBUG: 실패 메시지 레이블 설정 완료";
+    
+    // 배경과 텍스트가 포함된 픽스맵 생성
+    QPixmap combinedPixmap(width(), height());
+    combinedPixmap.fill(QColor(0, 0, 0, 150)); // 반투명 검은색 배경
+    
+    // 슬픈 얼굴 이미지 가져오기
+    QPixmap sadFacePixelArt = PixelArtGenerator::getInstance()->createSadFacePixelArt();
+    
+    // 이미지와 텍스트를 합성할 페인터 생성
+    QPainter painter(&combinedPixmap);
+    
+    // 텍스트 설정
+    QFont font = painter.font();
+    font.setPointSize(64);
+    font.setBold(true);
+    painter.setFont(font);
+    painter.setPen(Qt::red);
+    
+    // 텍스트 크기 계산
+    QFontMetrics fm(font);
+    QRect textRect = fm.boundingRect("FAIL");
+    
+    // 이미지와 텍스트의 전체 너비 계산
+    int totalWidth = sadFacePixelArt.width() + textRect.width() + 30; // 30px의 간격 추가
+    
+    // 시작 x 위치 계산 (화면 중앙에 배치)
+    int startX = (width() - totalWidth) / 2;
+    int centerY = height() / 2;
+    
+    // 텍스트 그리기 (이미지 왼쪽에)
+    painter.drawText(QRect(startX, centerY - 50, textRect.width(), 100), Qt::AlignVCenter, "FAIL");
+    
+    // 슬픈 얼굴 이미지 그리기 (텍스트 오른쪽에)
+    int imageX = startX + textRect.width() + 30; // 텍스트 오른쪽에 30px 간격 추가
+    int imageY = centerY - sadFacePixelArt.height() / 2;
+    painter.drawPixmap(imageX, imageY, sadFacePixelArt);
+    
+    // 합성 완료
+    painter.end();
+    
+    // 결과물을 레이블에 설정
+    failLabel->setPixmap(combinedPixmap);
+    qDebug() << "DEBUG: 슬픈 얼굴 이미지와 FAIL 텍스트 설정 완료";
     
     // 5초 후 메시지 숨기고 메인 화면으로 돌아가기 (효과음이 완전히 재생될 때까지 대기)
     QTimer::singleShot(5000, this, &BingoWidget::hideFailAndReset);
+    qDebug() << "DEBUG: 실패 타이머 시작, 5초 후 메시지 사라짐";
     
     // 실패 효과음 재생
     SoundManager::getInstance()->playEffect(SoundManager::FAIL_SOUND);
@@ -1616,74 +1679,6 @@ void BingoWidget::hideEvent(QHideEvent *event)
         qDebug() << "DEBUG: BingoWidget - Stopping game timer in hideEvent";
         gameTimer->stop();
     }
-}
-
-// createBearImage 함수 추가 (BingoWidget 클래스의 멤버 함수)
-QPixmap BingoWidget::createBearImage() {
-    QPixmap bearImage(80, 80);
-    bearImage.fill(Qt::transparent);
-    QPainter painter(&bearImage);
-    
-    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
-    painter.setRenderHint(QPainter::Antialiasing, false);
-    
-    // 갈색 곰돌이 색상
-    QColor bearColor(165, 113, 78);
-    QColor darkBearColor(120, 80, 60);
-    
-    // 중앙 정렬을 위한 오프셋
-    int offsetX = 5;
-    int offsetY = 5;
-    
-    // 기본 얼굴 사각형
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(bearColor);
-    painter.drawRect(15 + offsetX, 20 + offsetY, 40, 40);
-    
-    // 얼굴 둥글게 만들기 - 픽셀 추가
-    painter.drawRect(11 + offsetX, 25 + offsetY, 4, 30);  // 왼쪽
-    painter.drawRect(55 + offsetX, 25 + offsetY, 4, 30);  // 오른쪽
-    painter.drawRect(20 + offsetX, 16 + offsetY, 30, 4);  // 위
-    painter.drawRect(20 + offsetX, 60 + offsetY, 30, 4);  // 아래
-    
-    // 추가 픽셀로 더 둥글게 표현
-    painter.drawRect(15 + offsetX, 20 + offsetY, 5, 5);   // 좌상단 보강
-    painter.drawRect(50 + offsetX, 20 + offsetY, 5, 5);   // 우상단 보강
-    painter.drawRect(15 + offsetX, 55 + offsetY, 5, 5);   // 좌하단 보강
-    painter.drawRect(50 + offsetX, 55 + offsetY, 5, 5);   // 우하단 보강
-    
-    // 모서리 픽셀 추가
-    painter.drawRect(12 + offsetX, 21 + offsetY, 3, 4);   // 좌상단 모서리
-    painter.drawRect(55 + offsetX, 21 + offsetY, 3, 4);   // 우상단 모서리
-    painter.drawRect(12 + offsetX, 55 + offsetY, 3, 4);   // 좌하단 모서리
-    painter.drawRect(55 + offsetX, 55 + offsetY, 3, 4);   // 우하단 모서리
-    
-    // 귀 위치 및 크기 조정 (가로 길이 축소)
-    // 왼쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(16 + offsetX, 6 + offsetY, 10, 16);  // 기본 왼쪽 귀 (가로 축소)
-    painter.drawRect(11 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 왼쪽 보강
-    painter.drawRect(26 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 오른쪽 보강 (좌표 조정)
-    
-    // 오른쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(44 + offsetX, 6 + offsetY, 10, 16);  // 기본 오른쪽 귀 (가로 축소)
-    painter.drawRect(39 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 왼쪽 보강 (좌표 조정)
-    painter.drawRect(54 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 오른쪽 보강
-    
-    // 귀 안쪽 (더 어두운 색) - 가로 길이 축소 (7→6)
-    painter.setBrush(darkBearColor);
-    painter.drawRect(19 + offsetX, 9 + offsetY, 6, 10);   // 왼쪽 귀 안쪽 (가로 축소)
-    painter.drawRect(45 + offsetX, 9 + offsetY, 6, 10);   // 오른쪽 귀 안쪽 (가로 축소)
-    
-    // 눈 (간격 넓히기)
-    painter.setBrush(Qt::black);
-    painter.drawRect(22 + offsetX, 35 + offsetY, 6, 6);   // 왼쪽 눈 (좌표 조정 - 더 왼쪽으로)
-    painter.drawRect(42 + offsetX, 35 + offsetY, 6, 6);   // 오른쪽 눈 (좌표 조정 - 더 오른쪽으로)
-    
-    // 코 (위치 위로 올리고 크기 축소)
-    painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
-    
-    qDebug() << "Created adjusted pixel-style bear drawing, size:" << bearImage.width() << "x" << bearImage.height();
-    return bearImage;
 }
 
 // 선택된 셀의 RGB 값 업데이트 함수 추가

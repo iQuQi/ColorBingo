@@ -10,6 +10,7 @@
 #include "hardwareInterface/webcambutton.h"
 #include <QShowEvent>
 #include <QHideEvent>
+#include "../../utils/pixelartgenerator.h"
 
 MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
     isCapturing(false),
@@ -190,16 +191,25 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     sliderWidget->hide();
 
     QLabel *circleLabel = new QLabel("Circle Size:");
+    QFont sliderFont = circleLabel->font();
+    sliderFont.setPointSize(11);
+    circleLabel->setFont(sliderFont);
+    
     circleSlider = new QSlider(Qt::Horizontal);
-    circleSlider->setMinimum(5);
-    circleSlider->setMaximum(20);
+    circleSlider->setRange(5, 50); // 최소 5px, 최대 50px
     circleSlider->setValue(circleRadius);
-    circleValueLabel = new QLabel(QString::number(circleRadius) + "%");
+    circleSlider->setFixedWidth(150);
+    
+    circleValueLabel = new QLabel(QString::number(circleRadius));
+    circleValueLabel->setFont(sliderFont);
+    circleValueLabel->setFixedWidth(30);
+    circleValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     circleSliderLayout->addWidget(circleLabel);
     circleSliderLayout->addWidget(circleSlider);
     circleSliderLayout->addWidget(circleValueLabel);
 
+    // 슬라이더 레이아웃을 카메라 레이아웃에 추가
     cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
 
     // Add stretch for vertical centering
@@ -252,9 +262,11 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     // 슬라이더 설정
     circleSlider->setMinimumHeight(30);
 
-    // 픽셀 스타일 곰돌이 이미지 생성 (별도 함수로 분리)
-    bearImage = createBearImage();
-    xImage = createXImage();
+    // X 이미지 생성
+    xImage = PixelArtGenerator::getInstance()->createXImage();
+
+    // 곰돌이 이미지 생성
+    bearImage = PixelArtGenerator::getInstance()->createBearImage();
     qDebug() << "Basic variable initialization completed";
 
     // Back 버튼 설정
@@ -267,12 +279,29 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     restartButton->setFixedSize(80, 30); // 버튼 크기 고정
     connect(restartButton, &QPushButton::clicked, this, &MultiGameWidget::onRestartButtonClicked);
 
-    // 버튼 스타일 변경 - 진회색 배경으로 수정
-    QString buttonStyle = "QPushButton { background-color: rgba(50, 50, 50, 200); color: white; "
-                         "border-radius: 4px; font-weight: bold; } "
-                         "QPushButton:hover { background-color: rgba(70, 70, 70, 220); }";
-    backButton->setStyleSheet(buttonStyle);
-    restartButton->setStyleSheet(buttonStyle);
+    // 픽셀 스타일 적용
+    QString backButtonStyle = PixelArtGenerator::getInstance()->createPixelButtonStyle(
+        QColor(50, 50, 50, 200), // 진회색 배경, 약간 투명
+        2,   // 얇은 테두리
+        4    // 작은 라운드 코너
+    );
+    
+    QString restartButtonStyle = PixelArtGenerator::getInstance()->createPixelButtonStyle(
+        QColor(70, 70, 70, 200), // 조금 더 밝은 회색
+        2,    // 얇은 테두리
+        4     // 작은 라운드 코너
+    );
+    
+    // 버튼 폰트 크기 조정 (작은 버튼이므로 폰트 크기를 직접 조정)
+    backButtonStyle.replace("font-size: 24px", "font-size: 14px");
+    restartButtonStyle.replace("font-size: 24px", "font-size: 14px");
+    
+    // 패딩 축소 (버튼이 작으므로)
+    backButtonStyle.replace("padding: 15px 30px", "padding: 5px 10px");
+    restartButtonStyle.replace("padding: 15px 30px", "padding: 5px 10px");
+    
+    backButton->setStyleSheet(backButtonStyle);
+    restartButton->setStyleSheet(restartButtonStyle);
 
     // 초기 위치 설정
     updateBackButtonPosition();
@@ -857,7 +886,7 @@ void MultiGameWidget::handleCameraDisconnect() {
 
 void MultiGameWidget::onCircleSliderValueChanged(int value) {
     circleRadius = value;
-    circleValueLabel->setText(QString::number(value) + "%");
+    circleValueLabel->setText(QString::number(value));
 }
 
 void MultiGameWidget::restartCamera()
@@ -1081,6 +1110,9 @@ void MultiGameWidget::showSuccessMessage() {
     successLabel->raise(); // 다른 위젯 위에 표시
     successLabel->show();
 
+    // 픽셀 아트 트로피 생성
+    QPixmap trophyPixelArt = PixelArtGenerator::getInstance()->createTrophyPixelArt();
+
     // 1초 후 메시지 숨기고 게임 초기화
     successTimer->start(1000);
 }
@@ -1158,38 +1190,6 @@ void MultiGameWidget::onBackButtonClicked() {
 
     qDebug() << "DEBUG: MultiGameWidget - Emitting backToMainRequested signal";
     emit backToMainRequested();
-}
-
-QPixmap MultiGameWidget::createXImage() {
-    qDebug() << "Creating smooth line-based X mark";
-
-    // Create X image with transparent background
-    QPixmap xImg(100, 100);
-    xImg.fill(Qt::transparent);
-
-    QPainter painter(&xImg);
-    // 선을 부드럽게 그리기 위해 안티앨리어싱 활성화
-    painter.setRenderHint(QPainter::Antialiasing, true);
-
-    // 선 두께와 색상 설정
-    QPen pen(Qt::white);
-    pen.setWidth(8);  // 선 두께 설정
-    pen.setCapStyle(Qt::RoundCap);  // 선 끝을 둥글게
-    pen.setJoinStyle(Qt::RoundJoin);  // 선 연결 부분을 둥글게
-    painter.setPen(pen);
-
-    // 중심점 계산
-    const int center = 50;  // 100x100 이미지의 중심
-    const int padding = 20;  // 외곽 여백
-
-    // 대각선 두 개 그리기
-    painter.drawLine(padding, padding, 100-padding, 100-padding);  // 왼쪽 위에서 오른쪽 아래로
-    painter.drawLine(100-padding, padding, padding, 100-padding);  // 오른쪽 위에서 왼쪽 아래로
-
-    painter.end();
-
-    qDebug() << "Smooth line-based X mark created successfully";
-    return xImg;
 }
 
 // Add a separate color correction function
@@ -1334,6 +1334,9 @@ void MultiGameWidget::showFailMessage() {
     failLabel->raise(); // 다른 위젯 위에 표시
     failLabel->show();
 
+    // 픽셀 아트 슬픈 얼굴 생성
+    QPixmap sadFacePixelArt = PixelArtGenerator::getInstance()->createSadFacePixelArt();
+
     // 2초 후 메시지 숨기고 메인 화면으로 돌아가기
     QTimer::singleShot(2000, this, &MultiGameWidget::hideFailAndReset);
 }
@@ -1457,72 +1460,4 @@ void MultiGameWidget::hideEvent(QHideEvent *event)
         stopCamera();
         camera->closeCamera();
     }
-}
-
-// createBearImage 함수 추가 (BingoWidget 클래스의 멤버 함수)
-QPixmap MultiGameWidget::createBearImage() {
-    QPixmap bearImage(80, 80);
-    bearImage.fill(Qt::transparent);
-    QPainter painter(&bearImage);
-
-    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
-    painter.setRenderHint(QPainter::Antialiasing, false);
-
-    // 갈색 곰돌이 색상
-    QColor bearColor(165, 113, 78);
-    QColor darkBearColor(120, 80, 60);
-
-    // 중앙 정렬을 위한 오프셋
-    int offsetX = 5;
-    int offsetY = 5;
-
-    // 기본 얼굴 사각형
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(bearColor);
-    painter.drawRect(15 + offsetX, 20 + offsetY, 40, 40);
-
-    // 얼굴 둥글게 만들기 - 픽셀 추가
-    painter.drawRect(11 + offsetX, 25 + offsetY, 4, 30);  // 왼쪽
-    painter.drawRect(55 + offsetX, 25 + offsetY, 4, 30);  // 오른쪽
-    painter.drawRect(20 + offsetX, 16 + offsetY, 30, 4);  // 위
-    painter.drawRect(20 + offsetX, 60 + offsetY, 30, 4);  // 아래
-
-    // 추가 픽셀로 더 둥글게 표현
-    painter.drawRect(15 + offsetX, 20 + offsetY, 5, 5);   // 좌상단 보강
-    painter.drawRect(50 + offsetX, 20 + offsetY, 5, 5);   // 우상단 보강
-    painter.drawRect(15 + offsetX, 55 + offsetY, 5, 5);   // 좌하단 보강
-    painter.drawRect(50 + offsetX, 55 + offsetY, 5, 5);   // 우하단 보강
-
-    // 모서리 픽셀 추가
-    painter.drawRect(12 + offsetX, 21 + offsetY, 3, 4);   // 좌상단 모서리
-    painter.drawRect(55 + offsetX, 21 + offsetY, 3, 4);   // 우상단 모서리
-    painter.drawRect(12 + offsetX, 55 + offsetY, 3, 4);   // 좌하단 모서리
-    painter.drawRect(55 + offsetX, 55 + offsetY, 3, 4);   // 우하단 모서리
-
-    // 귀 위치 및 크기 조정 (가로 길이 축소)
-    // 왼쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(16 + offsetX, 6 + offsetY, 10, 16);  // 기본 왼쪽 귀 (가로 축소)
-    painter.drawRect(11 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 왼쪽 보강
-    painter.drawRect(26 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 오른쪽 보강 (좌표 조정)
-
-    // 오른쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(44 + offsetX, 6 + offsetY, 10, 16);  // 기본 오른쪽 귀 (가로 축소)
-    painter.drawRect(39 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 왼쪽 보강 (좌표 조정)
-    painter.drawRect(54 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 오른쪽 보강
-
-    // 귀 안쪽 (더 어두운 색) - 가로 길이 축소 (7→6)
-    painter.setBrush(darkBearColor);
-    painter.drawRect(19 + offsetX, 9 + offsetY, 6, 10);   // 왼쪽 귀 안쪽 (가로 축소)
-    painter.drawRect(45 + offsetX, 9 + offsetY, 6, 10);   // 오른쪽 귀 안쪽 (가로 축소)
-
-    // 눈 (간격 넓히기)
-    painter.setBrush(Qt::black);
-    painter.drawRect(22 + offsetX, 35 + offsetY, 6, 6);   // 왼쪽 눈 (좌표 조정 - 더 왼쪽으로)
-    painter.drawRect(42 + offsetX, 35 + offsetY, 6, 6);   // 오른쪽 눈 (좌표 조정 - 더 오른쪽으로)
-
-    // 코 (위치 위로 올리고 크기 축소)
-    painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
-
-    qDebug() << "Created adjusted pixel-style bear drawing, size:" << bearImage.width() << "x" << bearImage.height();
-    return bearImage;
 }

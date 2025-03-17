@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "hardwareInterface/SoundManager.h"
-#include "ui/widgets/colorcapturewidget.h"
+#include "ui/widgets/bingopreparationwidget.h"
 #include "background.h"  // 내장된 배경 리소스 포함
 #include <QDebug>
 #include <QThread>
@@ -19,6 +19,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QFontDatabase>
+#include <QApplication>
+#include "utils/pixelartgenerator.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -29,6 +32,30 @@ MainWindow::MainWindow(QWidget *parent) :
     volumeLevel(2), // Default volume level is 2 (medium)
     backgroundImage() // 배경 이미지 초기화 추가
 {
+    // 귀여운 폰트 설정
+    int fontIdBold = QFontDatabase::addApplicationFont(":/fonts/ComicNeue-Bold.ttf");
+    int fontIdRegular = QFontDatabase::addApplicationFont(":/fonts/ComicNeue-Regular.ttf");
+    
+    // 폰트 로딩 결과 확인
+    QString fontFamily;
+    if (fontIdBold != -1 && fontIdRegular != -1) {
+        QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontIdRegular);
+        if (!fontFamilies.isEmpty()) {
+            fontFamily = fontFamilies.at(0);
+            qDebug() << "Successfully loaded font:" << fontFamily;
+        }
+    } else {
+        qDebug() << "Failed to load Comic Neue fonts, falling back to system fonts";
+        fontFamily = "Comic Sans MS";
+    }
+    
+    // 전체 애플리케이션에 귀여운 폰트 적용
+    QFont cuteFont(fontFamily, 10);
+    QApplication::setFont(cuteFont);
+    
+    // 전체 앱에 폰트 패밀리 적용 (폰트 파일이 없는 경우 대체 폰트 사용)
+    setStyleSheet(QString("* { font-family: '%1', 'Comic Sans MS', 'Segoe UI', 'Arial', sans-serif; }").arg(fontFamily));
+    
     // Set default window size
     resize(800, 600);
     
@@ -56,26 +83,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Create and setup volume button
     volumeButton = new QPushButton(this);
     volumeButton->setFixedSize(60, 60);
-    volumeButton->setStyleSheet(
-        "QPushButton { "
-        "   background-color: rgba(255, 255, 255, 180); "
-        "   border-radius: 10px; "
-        "   border: 3px solid #444444; "
-        "} "
-        "QPushButton:hover { "
-        "   background-color: rgba(255, 255, 255, 220); "
-        "   border: 3px solid #4a86e8; "
-        "} "
-        "QPushButton:pressed { "
-        "   background-color: rgba(220, 220, 220, 220); "
-        "} "
-        "QPushButton:focus { "
-        "   border: 3px solid #444444; "
-        "   outline: none; "
-        "}"
-    );
     volumeButton->setCursor(Qt::PointingHandCursor);
-    volumeButton->setFocusPolicy(Qt::NoFocus);
     connect(volumeButton, &QPushButton::clicked, this, &MainWindow::onVolumeButtonClicked);
     
     // Initial volume button update
@@ -100,73 +108,6 @@ MainWindow::MainWindow(QWidget *parent) :
     qDebug() << "MainWindow size:" << size();
 }
 
-// Pixel style bear image creation function
-QPixmap MainWindow::createBearImage() {
-    QPixmap bearImage(80, 80);
-    bearImage.fill(Qt::transparent);
-    QPainter painter(&bearImage);
-    
-    // 안티앨리어싱 비활성화 (픽셀 느낌을 위해)
-    painter.setRenderHint(QPainter::Antialiasing, false);
-    
-    // 갈색 곰돌이 색상
-    QColor bearColor(165, 113, 78);
-    QColor darkBearColor(120, 80, 60);
-    
-    // 중앙 정렬을 위한 오프셋
-    int offsetX = 5;
-    int offsetY = 5;
-    
-    // 기본 얼굴 사각형
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(bearColor);
-    painter.drawRect(15 + offsetX, 20 + offsetY, 40, 40);
-    
-    // 얼굴 둥글게 만들기 - 픽셀 추가
-    painter.drawRect(11 + offsetX, 25 + offsetY, 4, 30);  // 왼쪽
-    painter.drawRect(55 + offsetX, 25 + offsetY, 4, 30);  // 오른쪽
-    painter.drawRect(20 + offsetX, 16 + offsetY, 30, 4);  // 위
-    painter.drawRect(20 + offsetX, 60 + offsetY, 30, 4);  // 아래
-    
-    // 추가 픽셀로 더 둥글게 표현
-    painter.drawRect(15 + offsetX, 20 + offsetY, 5, 5);   // 좌상단 보강
-    painter.drawRect(50 + offsetX, 20 + offsetY, 5, 5);   // 우상단 보강
-    painter.drawRect(15 + offsetX, 55 + offsetY, 5, 5);   // 좌하단 보강
-    painter.drawRect(50 + offsetX, 55 + offsetY, 5, 5);   // 우하단 보강
-    
-    // 모서리 픽셀 추가
-    painter.drawRect(12 + offsetX, 21 + offsetY, 3, 4);   // 좌상단 모서리
-    painter.drawRect(55 + offsetX, 21 + offsetY, 3, 4);   // 우상단 모서리
-    painter.drawRect(12 + offsetX, 55 + offsetY, 3, 4);   // 좌하단 모서리
-    painter.drawRect(55 + offsetX, 55 + offsetY, 3, 4);   // 우하단 모서리
-    
-    // 귀 위치 및 크기 조정 (가로 길이 축소)
-    // 왼쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(16 + offsetX, 6 + offsetY, 10, 16);  // 기본 왼쪽 귀 (가로 축소)
-    painter.drawRect(11 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 왼쪽 보강
-    painter.drawRect(26 + offsetX, 10 + offsetY, 5, 12);  // 왼쪽 귀 오른쪽 보강 (좌표 조정)
-    
-    // 오른쪽 귀 - 가로 길이 축소 (13→10)
-    painter.drawRect(44 + offsetX, 6 + offsetY, 10, 16);  // 기본 오른쪽 귀 (가로 축소)
-    painter.drawRect(39 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 왼쪽 보강 (좌표 조정)
-    painter.drawRect(54 + offsetX, 10 + offsetY, 5, 12);  // 오른쪽 귀 오른쪽 보강
-    
-    // 귀 안쪽 (더 어두운 색) - 가로 길이 축소 (7→6)
-    painter.setBrush(darkBearColor);
-    painter.drawRect(19 + offsetX, 9 + offsetY, 6, 10);   // 왼쪽 귀 안쪽 (가로 축소)
-    painter.drawRect(45 + offsetX, 9 + offsetY, 6, 10);   // 오른쪽 귀 안쪽 (가로 축소)
-    
-    // 눈 (간격 넓히기)
-    painter.setBrush(Qt::black);
-    painter.drawRect(22 + offsetX, 35 + offsetY, 6, 6);   // 왼쪽 눈 (좌표 조정 - 더 왼쪽으로)
-    painter.drawRect(42 + offsetX, 35 + offsetY, 6, 6);   // 오른쪽 눈 (좌표 조정 - 더 오른쪽으로)
-    
-    // 코 (위치 위로 올리고 크기 축소)
-    painter.drawRect(32 + offsetX, 42 + offsetY, 6, 4);   // 코 (위치 위로, 크기 축소 8x5→6x4)
-    
-    return bearImage;
-}
-
 void MainWindow::setupMainScreen()
 {
     // Setup main screen widget
@@ -178,7 +119,7 @@ void MainWindow::setupMainScreen()
     
     // Create central container for content
     centerWidget = new QWidget(mainMenu);
-    centerWidget->setStyleSheet("QWidget { background-color: #ffffff; border-radius: 10px; }");
+    centerWidget->setStyleSheet("QWidget { background-color: rgba(255, 255, 255, 0); border-radius: 50px; }");
     centerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     
     // 그림자 효과 추가
@@ -197,23 +138,25 @@ void MainWindow::setupMainScreen()
     titleLayout->setAlignment(Qt::AlignVCenter); // Align all elements to vertical center
     
     // Create bear image
-    QPixmap bearPixmap = createBearImage();
+    QPixmap bearPixmap = PixelArtGenerator::getInstance()->createBearImage();
     
     // Left bear image label
     QLabel *leftBearLabel = new QLabel(centerWidget);
     leftBearLabel->setPixmap(bearPixmap);
     leftBearLabel->setFixedSize(bearPixmap.size());
+    leftBearLabel->setStyleSheet("background-color: transparent;");
     
     // Title label
     QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    // Remove bottom margin and keep only font size
-    titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333;");
+    // 더 귀여운 스타일로 타이틀 폰트 수정 - 폰트 크기 더 증가 및 그림자 효과 추가
+    titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px; text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);");
     
     // Right bear image label
     QLabel *rightBearLabel = new QLabel(centerWidget);
     rightBearLabel->setPixmap(bearPixmap);
     rightBearLabel->setFixedSize(bearPixmap.size());
+    rightBearLabel->setStyleSheet("background-color: transparent;");
     
     // Add widgets to layout (all set to vertical center alignment)
     titleLayout->addWidget(leftBearLabel, 0, Qt::AlignVCenter);
@@ -230,46 +173,16 @@ void MainWindow::setupMainScreen()
     const int BUTTON_WIDTH = 280;
     const int BUTTON_HEIGHT = 70;
     
-    // Button common style
-    QString blueButtonStyle = 
-        "QPushButton {"
-        "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
-        "   background-color: #4a86e8; color: white; border-radius: 8px;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #3a76d8;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: #2a66c8;"
-        "}";
+    // 현재 불러온 폰트 패밀리 가져오기
+    QString fontFamily = QApplication::font().family();
     
-    // Add pastel light green style
-    QString greenButtonStyle = 
-        "QPushButton {"
-        "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
-        "   background-color: #8BC34A; color: white; border-radius: 8px;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #7CB342;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: #689F38;"
-        "}";
+    // PixelArtGenerator를 사용하여 픽셀 스타일 버튼 스타일 생성
+    PixelArtGenerator* pixelArtGen = PixelArtGenerator::getInstance();
     
-    QString redButtonStyle = 
-        "QPushButton {"
-        "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
-        "   background-color: #e74c3c; color: white; border-radius: 8px;"
-        "   border: none;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #d62c1a;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: #c0392b;"
-        "}";
+    // 각 버튼에 픽셀 스타일 적용
+    QString blueButtonStyle = pixelArtGen->createPixelButtonStyle(QColor("#4a86e8"));
+    QString greenButtonStyle = pixelArtGen->createPixelButtonStyle(QColor("#8BC34A"));
+    QString redButtonStyle = pixelArtGen->createPixelButtonStyle(QColor("#e74c3c"));
     
     // Single Game button (previously Start Bingo button)
     QPushButton *singleGameButton = new QPushButton("Single Game", centerWidget);
@@ -302,7 +215,6 @@ void MainWindow::setupMainScreen()
     
     // Connect signals
     connect(singleGameButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
-    //connect(multiGameButton, &QPushButton::clicked, this, &MainWindow::showMultiGameScreen);
     connect(multiGameButton, &QPushButton::clicked, this, [=]() {
         this->showMatchingScreen();
         matchingWidget->startMatching();
@@ -340,32 +252,29 @@ void MainWindow::showBingoScreen()
         QThread::msleep(500);
     }
     
+    // 기존 colorCaptureWidget이 없으면 생성
     if (!colorCaptureWidget) {
-        qDebug() << "DEBUG: Creating new ColorCaptureWidget";
-        colorCaptureWidget = new ColorCaptureWidget(this);
+        qDebug() << "DEBUG: Creating new BingoPreparationWidget";
+        colorCaptureWidget = new BingoPreparationWidget(this);
         // Add to stacked widget
         stackedWidget->addWidget(colorCaptureWidget);
     }
     
-    // Set to single game mode
+    // 단일 게임 모드 설정
     colorCaptureWidget->setGameMode(GameMode::SINGLE);
-    qDebug() << "DEBUG: ColorCaptureWidget set to SINGLE mode";
+    qDebug() << "DEBUG: BingoPreparationWidget set to SINGLE mode";
     
-    // Disconnect previous connections and set up new ones
+    // Signal/slot connections
     qDebug() << "DEBUG: Reconnecting signals for Single Game mode";
     disconnect(colorCaptureWidget, nullptr, this, nullptr); // Disconnect all existing connections
-    connect(colorCaptureWidget, &ColorCaptureWidget::createBingoRequested, 
+    connect(colorCaptureWidget, &BingoPreparationWidget::createBingoRequested, 
             this, &MainWindow::onCreateBingoRequested);
-    connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
+    connect(colorCaptureWidget, &BingoPreparationWidget::backToMainRequested, 
             this, &MainWindow::showMainMenu);
     
-    // Change current widget to color capture widget
+    // Show color capture widget
     stackedWidget->setCurrentWidget(colorCaptureWidget);
-    
-    // Add short delay to allow resources to fully initialize
-    QTimer::singleShot(500, this, [this]() {
-        qDebug() << "DEBUG: ColorCaptureWidget now displayed";
-    });
+    qDebug() << "DEBUG: BingoPreparationWidget now displayed";
 }
 
 
@@ -412,32 +321,29 @@ void MainWindow::showMultiGameScreen()
         QThread::msleep(500);
     }
 
+    // 기존 colorCaptureWidget이 없으면 생성
     if (!colorCaptureWidget) {
-        qDebug() << "DEBUG: Creating new ColorCaptureWidget";
-        colorCaptureWidget = new ColorCaptureWidget(this);
+        qDebug() << "DEBUG: Creating new BingoPreparationWidget";
+        colorCaptureWidget = new BingoPreparationWidget(this);
         // Add to stacked widget
         stackedWidget->addWidget(colorCaptureWidget);
     }
-
-    // Set to multi game mode
-    colorCaptureWidget->setGameMode(GameMode::MULTI);
-    qDebug() << "DEBUG: ColorCaptureWidget set to MULTI mode";
     
-    // Disconnect previous connections and set up new ones
+    // 멀티 게임 모드 설정
+    colorCaptureWidget->setGameMode(GameMode::MULTI);
+    qDebug() << "DEBUG: BingoPreparationWidget set to MULTI mode";
+    
+    // Signal/slot connections
     qDebug() << "DEBUG: Reconnecting signals for Multi Game mode";
     disconnect(colorCaptureWidget, nullptr, this, nullptr); // Disconnect all existing connections
-    connect(colorCaptureWidget, &ColorCaptureWidget::createMultiGameRequested,
+    connect(colorCaptureWidget, &BingoPreparationWidget::createMultiGameRequested,
             this, &MainWindow::onCreateMultiGameRequested);
-    connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested,
+    connect(colorCaptureWidget, &BingoPreparationWidget::backToMainRequested,
             this, &MainWindow::showMainMenu);
-
-    // Change current widget to color capture widget
+    
+    // Show color capture widget
     stackedWidget->setCurrentWidget(colorCaptureWidget);
-
-    // Add short delay to allow resources to fully initialize
-    QTimer::singleShot(500, this, [this]() {
-        qDebug() << "DEBUG: ColorCaptureWidget now displayed";
-    });
+    qDebug() << "DEBUG: BingoPreparationWidget now displayed";
 }
 
 void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
@@ -541,7 +447,7 @@ void MainWindow::showMainMenu()
     
     // Ensure widget camera resources are released
     if (colorCaptureWidget && stackedWidget->currentWidget() == colorCaptureWidget) {
-        qDebug() << "DEBUG: Stopping ColorCaptureWidget camera before returning to main menu";
+        qDebug() << "DEBUG: Stopping BingoPreparationWidget camera before returning to main menu";
         colorCaptureWidget->stopCameraCapture();
         QThread::msleep(500);
     }
@@ -662,28 +568,21 @@ void MainWindow::onVolumeButtonClicked()
 // Update volume button status
 void MainWindow::updateVolumeButton()
 {
-    QPixmap volumeIcon = createVolumeImage(volumeLevel);
+    QPixmap volumeIcon = PixelArtGenerator::getInstance()->createVolumeImage(volumeLevel);
     volumeButton->setIcon(QIcon(volumeIcon));
     volumeButton->setIconSize(QSize(50, 50)); // Adjust icon size
     
-    // Set border color to dark gray and add focus state
-    QString buttonStyle = 
-        "QPushButton { "
-        "   background-color: rgba(255, 255, 255, 180); "
-        "   border-radius: 10px; "
-        "   border: 3px solid #444444; "
-        "} "
-        "QPushButton:hover { "
-        "   background-color: rgba(255, 255, 255, 220); "
-        "   border: 3px solid #4a86e8; "
-        "} "
-        "QPushButton:pressed { "
-        "   background-color: rgba(220, 220, 220, 220); "
-        "} "
-        "QPushButton:focus { "
-        "   border: 3px solid #444444; "
-        "   outline: none; "
-        "}";
+    // 픽셀 스타일 버튼 적용 (흰색으로 설정하여 focus 상태와 상관없이 항상 흰색 유지)
+    QString buttonStyle = PixelArtGenerator::getInstance()->createPixelButtonStyle(
+        QColor(255, 255, 255, 200), // 반투명 흰색
+        3,  // 테두리 두께
+        10  // 둥글기 정도
+    );
+    
+    // focus 상태에서도 동일한 색상을 유지하기 위해 추가 스타일 적용
+    buttonStyle += "QPushButton:focus { background-color: rgba(255, 255, 255, 200); }"
+                   "QPushButton:hover { background-color: rgba(255, 255, 255, 220); }"
+                   "QPushButton:pressed { background-color: rgba(255, 255, 255, 240); }";
     
     volumeButton->setStyleSheet(buttonStyle);
     
@@ -700,78 +599,6 @@ void MainWindow::updateVolumeButtonPosition()
         int margin = 15;
         volumeButton->move(width() - volumeButton->width() - margin, margin);
     }
-}
-
-// Pixel style volume icon creation
-QPixmap MainWindow::createVolumeImage(int volumeLevel)
-{
-    QPixmap volumeImage(40, 40);
-    volumeImage.fill(Qt::transparent);
-    QPainter painter(&volumeImage);
-    
-    // Disable antialiasing (for pixel feel)
-    painter.setRenderHint(QPainter::Antialiasing, false);
-    
-    // Common colors
-    QColor darkGray(50, 50, 50);
-    
-    // Draw speaker body (always displayed)
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(darkGray);
-    
-    // Speaker body (pixel style)
-    painter.drawRect(8, 14, 8, 12); // Speaker rectangular body
-    
-    // Speaker front (triangle pixel style)
-    painter.drawRect(16, 14, 2, 12); // Connector
-    painter.drawRect(18, 12, 2, 16); // Front part 1
-    painter.drawRect(20, 11, 2, 18); // Front part 2
-    painter.drawRect(22, 10, 2, 20); // Front part 3
-    
-    // Show sound waves (represented by individual rectangles in pixel style)
-    painter.setPen(Qt::NoPen);
-    
-    // First sound wave curve (always displayed, smallest curve)
-    if (volumeLevel >= 1) {
-        painter.drawRect(26, 15, 2, 2); // Top
-        painter.drawRect(26, 23, 2, 2); // Bottom
-        painter.drawRect(28, 13, 2, 2); // Top 2
-        painter.drawRect(28, 25, 2, 2); // Bottom 2
-        painter.drawRect(30, 14, 2, 12); // Vertical line
-    }
-    
-    // Second sound wave curve (displayed in levels 2, 3)
-    if (volumeLevel >= 2) {
-        painter.drawRect(32, 10, 2, 2); // Top
-        painter.drawRect(32, 28, 2, 2); // Bottom
-        painter.drawRect(34, 8, 2, 2); // Top 2
-        painter.drawRect(34, 30, 2, 2); // Bottom 2
-        painter.drawRect(36, 10, 2, 20); // Vertical line
-    }
-    
-    // Third sound wave curve (displayed only in level 3, largest curve)
-    if (volumeLevel == 3) {
-        painter.drawRect(38, 6, 2, 2); // Top
-        painter.drawRect(38, 32, 2, 2); // Bottom
-        painter.drawRect(40, 4, 2, 2); // Top 2
-        painter.drawRect(40, 34, 2, 2); // Bottom 2
-        painter.drawRect(42, 6, 2, 28); // Vertical line
-    }
-    
-    // Add X mark for low volume (level 1)
-    if (volumeLevel == 1) {
-        painter.setBrush(Qt::red);
-        // Pixel style X mark
-        painter.drawRect(30, 16, 2, 2);
-        painter.drawRect(32, 14, 2, 2);
-        painter.drawRect(34, 16, 2, 2);
-        painter.drawRect(32, 18, 2, 2);
-        painter.drawRect(30, 20, 2, 2);
-        painter.drawRect(34, 20, 2, 2);
-        painter.drawRect(32, 22, 2, 2);
-    }
-    
-    return volumeImage;
 }
 
 void MainWindow::paintEvent(QPaintEvent *event)
