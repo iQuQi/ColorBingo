@@ -24,12 +24,6 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     remainingSeconds(120), // 2분 = 120초 타이머 초기화
     sliderWidget(nullptr)  // 추가된 부분
 {
-
-    // 네트워크
-    network = new P2PNetwork(this);
-    connect(network, &P2PNetwork::opponentScoreUpdated, this, &MultiGameWidget::updateOpponentScore);
-    connect(network, &P2PNetwork::gameOverReceived, this, &MultiGameWidget::showFailureMessage);
-
     qDebug() << "MultiGameWidget constructor started";
 
     // Initialize main variables (prevent null pointers)
@@ -40,6 +34,11 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     camera = nullptr;
     circleValueLabel = nullptr;
     circleCheckBox = nullptr; // Initialize to nullptr even though we won't use it
+
+    // 네트워크
+    network = new P2PNetwork(this);
+    connect(network, &P2PNetwork::opponentScoreUpdated, this, &MultiGameWidget::updateOpponentScore);
+    connect(network, &P2PNetwork::gameOverReceived, this, &MultiGameWidget::showFailMessage);
 
 
     // 메인 레이아웃 생성 (가로 분할)
@@ -135,17 +134,6 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     successTimer = new QTimer(this);
     successTimer->setSingleShot(true);
     connect(successTimer, &QTimer::timeout, this, &MultiGameWidget::hideSuccessAndReset);
-
-    // 실패 메시지 레이블 초기화
-    failureLabel = new QLabel("YOU LOST!", this);
-    failureLabel->setAlignment(Qt::AlignCenter);
-    failureLabel->setStyleSheet("background-color: rgba(255, 255, 255, 120); color: red; font-weight: bold; font-size: 72px;");
-    failureLabel->hide(); // 초기에는 숨김
-
-    // 실패 메시지 타이머 초기화
-    failureTimer = new QTimer(this);
-    failureTimer->setSingleShot(true);
-    connect(failureTimer, &QTimer::timeout, this, &MultiGameWidget::hideFailureAndReset);
 
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);

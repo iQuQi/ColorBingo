@@ -55,8 +55,6 @@ private slots:
     void hideSuccessAndReset();
     void resetGame();
     void updateOpponentScore(int score);
-    void showFailureMessage();
-    void hideFailureAndReset();
     void onRestartButtonClicked();
     void onTimerTick();
     void updateTimerDisplay();
@@ -146,11 +144,9 @@ private:
     QLabel *successLabel;
 
 
-    // 실패 메시지 관련 멤버
-    QLabel *failureLabel;
-    QTimer *failureTimer;
 
-    QPushButton *backButton;
+
+
     // 선택된 셀의 RGB 값 표시 위젯 추가
     QLabel *selectedCellRgbLabel;
     QLabel *selectedCellRgbValueLabel;
@@ -160,11 +156,6 @@ private:
 
     // bearImage
     QPixmap bearImage;
-
-    QPixmap createXImage(); // X 이미지 생성 함수 추가
-
-    // 네트워크
-    P2PNetwork *network;
 
     QPixmap createXImage(); // X 이미지 생성 함수
     QPixmap createBearImage(); // 곰돌이 이미지 생성 함수 추가
@@ -178,6 +169,9 @@ private:
 
     QPushButton* backButton; // Back 버튼
     QPushButton* restartButton; // Restart 버튼
+
+    // 네트워크
+    P2PNetwork *network;
 
     void updateBackButtonPosition();
 
