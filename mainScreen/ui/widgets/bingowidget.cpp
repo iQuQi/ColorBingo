@@ -1091,6 +1091,9 @@ void BingoWidget::showSuccessMessage() {
 void BingoWidget::hideSuccessAndReset() {
     successLabel->hide();
     resetGame();
+    
+    // 메인 화면으로 돌아가는 신호 발생
+    emit backToMainRequested();
 }
 
 // 게임 초기화 함수 수정
