@@ -1,5 +1,5 @@
-#include "colorsampling.h"
-#include "bingowidget.h"
+#include "ui/screens/mainscreen.h"
+#include "ui/widgets/bingowidget.h"
 #include <QDebug>
 
 // onStartBingoClicked 함수 수정

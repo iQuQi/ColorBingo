@@ -16,6 +16,7 @@ public:
     ~V4L2Camera();
 
     bool openCamera(const QString &deviceName);
+    bool openCamera();
     void closeCamera();
     bool startCapturing();
     void stopCapturing();

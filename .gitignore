@@ -1,6 +1,10 @@
-ColorBingo/build-mainScreen-qt_embedded-Debug/**
+# 빌드 결과 디렉토리
+ColorBingo/**
 build-mainScreen-qt_embedded-Debug/**
-temp/**
+build-mainScreen/**
 
 # Qt Creator 사용자 파일
 *.pro.user*
+
+# cursorignore 파일
+.cursorignore

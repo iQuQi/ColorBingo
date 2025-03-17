@@ -1,4 +1,3 @@
-#include "v4l2camera.h"
 #include <QDebug>
 #include <fcntl.h>
 #include <QThread>
@@ -9,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
+#include "hardwareInterface/v4l2camera.h"
+#include <QElapsedTimer>
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
@@ -18,13 +19,20 @@ V4L2Camera::V4L2Camera(QObject *parent) :
     buffers(NULL),
     n_buffers(0),
     isCapturing(false),
-    stopThread(false)
+    stopThread(false),
+    devicePath("/dev/video4")  // 디바이스 경로를 기본값으로 초기화
 {
 }
 
 V4L2Camera::~V4L2Camera()
 {
     closeCamera();
+}
+
+// 기본 디바이스 경로를 사용하는 openCamera 구현
+bool V4L2Camera::openCamera()
+{
+    return openCamera(devicePath);
 }
 
 bool V4L2Camera::openCamera(const QString &deviceName)
@@ -100,10 +108,13 @@ void V4L2Camera::initDevice()
     // Set video format
     CLEAR(fmt);
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width = 640;
-    fmt.fmt.pix.height = 480;
+    fmt.fmt.pix.width = 1600;
+    fmt.fmt.pix.height = 1200;
     fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
     fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
+
+    qDebug() << "fmt.fmt.pix.width:" << fmt.fmt.pix.width;
+    qDebug() << "fmt.fmt.pix.height:" << fmt.fmt.pix.height;
 
     if (xioctl(fd, VIDIOC_S_FMT, &fmt) == -1) {
         qDebug() << "VIDIOC_S_FMT error:" << strerror(errno);
@@ -212,7 +223,7 @@ bool V4L2Camera::startCapturing()
         
     if (fd == -1) {
         // 장치가 닫혀있으면 다시 열기 시도
-        if (!openCamera(devicePath)) {
+        if (!openCamera()) {
             return false;
         }
     }
@@ -287,6 +298,11 @@ void V4L2Camera::captureThreadLoop()
     struct timeval tv;
     int r;
     int errorCount = 0;  // Track consecutive errors
+    
+    // 프레임 처리 빈도 제한을 위한 변수
+    QElapsedTimer frameTimer;
+    frameTimer.start();
+    const int MIN_FRAME_INTERVAL_MS = 33; // 약 30 FPS로 제한 (1000/30 = 33.3ms)
 
     while (!stopThread) {
         FD_ZERO(&fds);
@@ -320,9 +336,18 @@ void V4L2Camera::captureThreadLoop()
             // Timeout, no data available
             continue;
         }
+        
+        // 이전 프레임 처리 후 최소 시간이 경과했는지 확인
+        if (frameTimer.elapsed() < MIN_FRAME_INTERVAL_MS) {
+            // 너무 빠른 프레임 처리는 CPU 부하를 줄이기 위해 건너뜀
+            // 다음 이벤트가 발생할 때까지 대기하면서 스레드 슬립
+            QThread::msleep(5); // 아주 짧게 쉬어 CPU 사용 줄임
+            continue;
+        }
 
         if (readFrame()) {
             emit newFrameAvailable();
+            frameTimer.restart(); // 타이머 재시작
         }
     }
 }
@@ -383,39 +408,73 @@ void V4L2Camera::yuv422ToRgb888(const void *yuv, QImage &rgbImage)
     // YUV 데이터를 RGB로 변환
     unsigned char *pp = (unsigned char *)yuv;
     
+    // 더 빠른 방식으로 변환을 위한 사전 계산된 테이블 사용
+    // 이 테이블들은 정적으로 선언하면 매번 재계산하지 않아도 됨
+    static int table_Y[256];
+    static int table_Cb_blue[256];
+    static int table_Cb_green[256];
+    static int table_Cr_green[256];
+    static int table_Cr_red[256];
+    static bool tables_initialized = false;
+    
+    if (!tables_initialized) {
+        // 테이블 초기화 (한번만 수행)
+        for (int i = 0; i < 256; i++) {
+            table_Y[i] = qBound(0, (int)(i * 1.2), 255); // 밝기 향상 20%
+            
+            int Cb_blue = (int)(1.7790 * (i - 128));
+            int Cb_green = (int)(0.3455 * (i - 128));
+            int Cr_green = (int)(0.7169 * (i - 128));
+            int Cr_red = (int)(1.4075 * (i - 128));
+            
+            table_Cb_blue[i] = Cb_blue;
+            table_Cb_green[i] = -Cb_green;
+            table_Cr_green[i] = -Cr_green;
+            table_Cr_red[i] = Cr_red;
+        }
+        tables_initialized = true;
+    }
+    
+    #pragma omp parallel for  // OpenMP 병렬화 (시스템 지원 시)
     for (int i = 0; i < height; i++) {
+        // 각 열에 대해 루프 최적화를 위해 포인터 사용
+        unsigned char *pY0, *pU, *pY1, *pV;
+        int rowOffset = i * width * 2;  // YUV422의 각 픽셀은 2바이트 사용
+        
+        // 한 행씩 처리
         for (int j = 0; j < width / 2; j++) {
-            // YUV422 포맷에서 2개의 픽셀이 4바이트로 저장됨 (Y1 U Y2 V)
-            unsigned char Y0 = pp[(i * width + j * 2) * 2];
-            unsigned char U  = pp[(i * width + j * 2) * 2 + 1];
-            unsigned char Y1 = pp[(i * width + j * 2) * 2 + 2];
-            unsigned char V  = pp[(i * width + j * 2) * 2 + 3];
+            int pixelOffset = rowOffset + j * 4;  // 2개 픽셀마다 4바이트 (Y0 U Y1 V)
             
-            // 밝기 향상 (Y 값 증가)
-            Y0 = qBound(0, (int)(Y0 * 1.2), 255);  // 20% 밝게
-            Y1 = qBound(0, (int)(Y1 * 1.2), 255);  // 20% 밝게
+            pY0 = pp + pixelOffset;
+            pU = pY0 + 1;
+            pY1 = pY0 + 2;
+            pV = pY0 + 3;
             
-            // YUV -> RGB 변환
-            // 첫 번째 픽셀
-            int R0 = Y0 + 1.4075 * (V - 128);
-            int G0 = Y0 - 0.3455 * (U - 128) - 0.7169 * (V - 128);
-            int B0 = Y0 + 1.7790 * (U - 128);
+            // 밝기 값 가져오기 (이미 테이블에서 밝기 보정 적용됨)
+            int Y0 = table_Y[*pY0];
+            int Y1 = table_Y[*pY1];
+            int U = *pU;
+            int V = *pV;
             
-            // 두 번째 픽셀
-            int R1 = Y1 + 1.4075 * (V - 128);
-            int G1 = Y1 - 0.3455 * (U - 128) - 0.7169 * (V - 128);
-            int B1 = Y1 + 1.7790 * (U - 128);
+            // RGB 값 계산
+            int R0 = Y0 + table_Cr_red[V];
+            int G0 = Y0 + table_Cb_green[U] + table_Cr_green[V];
+            int B0 = Y0 + table_Cb_blue[U];
             
-            // 색상 보정: 붉은기 약간 감소
-            R0 = qBound(0, (int)(R0 * 1.25), 255);   // 빨간색 25% 증가 (35%→25%)
-            G0 = qBound(0, (int)(G0 * 0.85), 255);   // 녹색 15% 감소 (20%→15%)
-            B0 = qBound(0, (int)(B0 * 0.85), 255);   // 파란색 15% 감소 (20%→15%)
+            int R1 = Y1 + table_Cr_red[V];
+            int G1 = Y1 + table_Cb_green[U] + table_Cr_green[V];
+            int B1 = Y1 + table_Cb_blue[U];
             
-            R1 = qBound(0, (int)(R1 * 1.25), 255);   // 빨간색 25% 증가 (35%→25%)
-            G1 = qBound(0, (int)(G1 * 0.85), 255);   // 녹색 15% 감소 (20%→15%)
-            B1 = qBound(0, (int)(B1 * 0.85), 255);   // 파란색 15% 감소 (20%→15%)
+            // 색상 보정: 붉은기 약간 증가
+            R0 = qBound(0, (int)(R0 * 1.25), 255);   // 빨간색 25% 증가
+            G0 = qBound(0, (int)(G0 * 0.85), 255);   // 녹색 15% 감소
+            B0 = qBound(0, (int)(B0 * 0.85), 255);   // 파란색 15% 감소
             
-            // QImage에 픽셀 설정
+            R1 = qBound(0, (int)(R1 * 1.25), 255);   // 빨간색 25% 증가
+            G1 = qBound(0, (int)(G1 * 0.85), 255);   // 녹색 15% 감소
+            B1 = qBound(0, (int)(B1 * 0.85), 255);   // 파란색 15% 감소
+            
+            // 픽셀 설정
             rgbImage.setPixel(j * 2, i, qRgb(R0, G0, B0));
             rgbImage.setPixel(j * 2 + 1, i, qRgb(R1, G1, B1));
         }

@@ -10,7 +10,7 @@
 #include <QThread>
 #include <QMessageBox>
 #include <QTimer>
-#include "v4l2camera.h"
+#include "hardwareInterface/v4l2camera.h"
 
 class ColorCaptureWidget : public QWidget
 {
@@ -28,6 +28,8 @@ signals:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
 
 private slots:
     void onCreateBingoClicked();
