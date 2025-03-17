@@ -24,6 +24,7 @@ public:
 
 signals:
     void createBingoRequested(const QList<QColor> &colors);
+    void createMultiGameRequested(const QList<QColor> &colors);
     void backToMainRequested();
 
 protected:
