@@ -76,6 +76,7 @@ private:
     int colorDistance(const QColor &c1, const QColor &c2);
     bool isColorBright(const QColor &color);
     void updateBingoScore();
+    //void updateOpponentBingoScore(int opponentScore);
 
     // 셀 선택 및 카메라 제어 함수
     void selectCell(int row, int col);
@@ -116,6 +117,7 @@ private:
     QColor cellColors[3][3];    // 각 셀의 색상
     bool bingoStatus[3][3];     // 각 셀의 빙고 상태 (O 표시 여부)
     QLabel *bingoScoreLabel;    // 빙고 점수 표시 레이블
+    QLabel *opponentBingoScoreLabel;
 
     // 카메라 관련 위젯
     QLabel *cameraView;

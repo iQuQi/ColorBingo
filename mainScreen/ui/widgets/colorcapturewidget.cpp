@@ -257,6 +257,17 @@ void ColorCaptureWidget::onCreateBingoClicked()
     }
 }
 
+void ColorCaptureWidget::onCreateMultiGameClicked()
+{
+    qDebug() << "DEBUG: Create Bingo button clicked";
+
+    // 색상 추출
+    QList<QColor> capturedColors = captureColorsFromFrame();
+
+    // 색상 리스트와 함께 빙고 생성 요청 시그널 발생
+    emit createMultiGameRequested(capturedColors);
+}
+
 void ColorCaptureWidget::onBackButtonClicked() 
 {
     qDebug() << "DEBUG: Back button clicked";

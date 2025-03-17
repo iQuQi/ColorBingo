@@ -44,6 +44,7 @@ protected:
 
 private slots:
     void onCreateBingoClicked();
+    void onCreateMultiGameClicked();
     void onBackButtonClicked();
     void updateCameraFrame();
     void handleCameraDisconnect();

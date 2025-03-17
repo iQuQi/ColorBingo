@@ -7,6 +7,7 @@
 #include <QList>
 #include <QColor>
 #include <QPixmap>
+#include <QPushButton>
 #include "ui/widgets/colorcapturewidget.h"
 #include "ui/widgets/bingowidget.h"
 #include "ui/widgets/multigamewidget.h"
@@ -27,12 +28,16 @@ private slots:
     void showMainMenu();
     void onCreateBingoRequested(const QList<QColor> &colors);
     void onCreateMultiGameRequested(const QList<QColor> &colors);
+    void onVolumeButtonClicked();
 
 private:
     void setupMainScreen();
     void updateCenterWidgetPosition();
     bool event(QEvent *event) override;
     QPixmap createBearImage();
+    QPixmap createVolumeImage(int volumeLevel);
+    void updateVolumeButton();
+    void updateVolumeButtonPosition();
     
     QStackedWidget *stackedWidget;
     QWidget *mainMenu;
@@ -41,6 +46,11 @@ private:
     BingoWidget *bingoWidget;
     MultiGameWidget *multiGameWidget;
     MatchingWidget *matchingWidget;
+
+    
+    QPushButton *volumeButton;
+    int volumeLevel;
+
 };
 
 #endif // MAINWINDOW_H

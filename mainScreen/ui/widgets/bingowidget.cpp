@@ -47,6 +47,7 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     QVBoxLayout* bingoVLayout = new QVBoxLayout(bingoArea);
     // bingoLayout = new QVBoxLayout(bingoArea);
     bingoVLayout->setContentsMargins(0, 0, 0, 0);
+    bingoVLayout->setSpacing(10); // 빙고 영역 내부 위젯 간격 일관성 설정
 
     // 빙고 점수 표시 레이블
     bingoScoreLabel = new QLabel("Bingo: 0", bingoArea);
@@ -59,7 +60,6 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
 
     // 빙고 셀 RGB 값 표시 레이블 추가
     cellRgbValueLabel = new QLabel("R: 0  G: 0  B: 0", bingoArea);
-    cellRgbValueLabel->setFrameShape(QFrame::Box);
     cellRgbValueLabel->setFixedHeight(30);
     cellRgbValueLabel->setFixedWidth(300); // 카메라 라벨과 같은 너비
     cellRgbValueLabel->setAlignment(Qt::AlignCenter);
@@ -68,11 +68,8 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     cellRgbValueLabel->setFont(cellRgbFont);
     cellRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 가능하도록
     
-    // 초기 배경색과 텍스트 색상 설정 (검은 배경에 흰색 텍스트)
-    QPalette cellPalette = cellRgbValueLabel->palette();
-    cellPalette.setColor(QPalette::Window, QColor(0, 0, 0));
-    cellPalette.setColor(QPalette::WindowText, Qt::white);
-    cellRgbValueLabel->setPalette(cellPalette);
+    // 모서리가 둥근 스타일 적용
+    cellRgbValueLabel->setStyleSheet("background-color: black; color: white; border-radius: 15px; padding: 3px;");
 
     // Status message label for game instructions
     statusMessageLabel = new QLabel("Please select a cell to match colors", bingoArea);
@@ -160,14 +157,13 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     QVBoxLayout* cameraVLayout = new QVBoxLayout(cameraArea);
     cameraVLayout->setAlignment(Qt::AlignTop); // Align to top
     cameraVLayout->setContentsMargins(0, 0, 0, 0);
-    cameraVLayout->setSpacing(10); // Add spacing between elements
+    cameraVLayout->setSpacing(10); // 카메라 영역 내부 위젯 간격 일관성 설정
 
     // Add stretch for vertical centering
     cameraVLayout->addStretch(1);
 
     // 1. RGB 값 표시 레이블 (맨 위에 배치)
     cameraRgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
-    cameraRgbValueLabel->setFrameShape(QFrame::Box);
     cameraRgbValueLabel->setFixedHeight(30);
     cameraRgbValueLabel->setFixedWidth(300); // Same width as camera
     cameraRgbValueLabel->setAlignment(Qt::AlignCenter);
@@ -176,11 +172,8 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     cameraRgbValueLabel->setFont(rgbFont);
     cameraRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 활성화
     
-    // 초기 배경색과 텍스트 색상 설정 (검은 배경에 흰색 텍스트)
-    QPalette cameraPalette = cameraRgbValueLabel->palette();
-    cameraPalette.setColor(QPalette::Window, QColor(0, 0, 0));
-    cameraPalette.setColor(QPalette::WindowText, Qt::white);
-    cameraRgbValueLabel->setPalette(cameraPalette);
+    // 모서리가 둥근 스타일 적용
+    cameraRgbValueLabel->setStyleSheet("background-color: black; color: white; border-radius: 15px; padding: 3px;");
     
     cameraVLayout->addWidget(cameraRgbValueLabel, 0, Qt::AlignCenter);
 
@@ -202,12 +195,48 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     sliderWidget->hide();
 
     QLabel *circleLabel = new QLabel("Circle Size:");
+    QFont sliderFont = circleLabel->font();
+    sliderFont.setPointSize(11);
+    circleLabel->setFont(sliderFont);
+    
+    // 예쁜 디자인으로 슬라이더 생성
     circleSlider = new QSlider(Qt::Horizontal);
     circleSlider->setMinimum(5);
     circleSlider->setMaximum(20);
     circleSlider->setValue(circleRadius);
-    circleValueLabel = new QLabel(QString::number(circleRadius) + "%");
-
+    circleSlider->setStyleSheet(
+        "QSlider::groove:horizontal {"
+        "    border: 1px solid #999999;"
+        "    height: 8px;"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
+        "    margin: 2px 0;"
+        "    border-radius: 4px;"
+        "}"
+        "QSlider::handle:horizontal {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4a86e8, stop:1 #275ead);"
+        "    border: 1px solid #5c5c5c;"
+        "    width: 18px;"
+        "    margin: -6px 0;"
+        "    border-radius: 9px;"
+        "}"
+        "QSlider::handle:horizontal:hover {"
+        "    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #5c9afc, stop:1 #3a75d7);"
+        "}"
+    );
+    
+    // 예쁜 스타일의 값 라벨 생성
+    circleValueLabel = new QLabel(QString::number(circleRadius));
+    circleValueLabel->setAlignment(Qt::AlignCenter);
+    circleValueLabel->setStyleSheet(
+        "background-color: rgb(0, 255, 0);" // 초기 색상, updateCameraFrame에서 업데이트됨
+        "color: white;"
+        "border-radius: 10px;"
+        "padding: 3px 8px;"
+        "min-width: 30px;"
+        "font-weight: bold;"
+    );
+    circleValueLabel->setFont(sliderFont);
+    
     circleSliderLayout->addWidget(circleLabel);
     circleSliderLayout->addWidget(circleSlider);
     circleSliderLayout->addWidget(circleValueLabel);
@@ -726,6 +755,9 @@ void BingoWidget::updateCameraFrame() {
         return;
     }
     
+    // 현재 프레임을 originalFrame에 저장
+    originalFrame = frame;
+    
     // Safety check: verify cameraView is valid
     if (!cameraView) {
         qDebug() << "ERROR: cameraView is null";
@@ -772,13 +804,14 @@ void BingoWidget::updateCameraFrame() {
         // Calculate circle radius (percentage of image width)
         int radius = (paintPixmap.width() * circleRadius) / 100;
         
-        // Set green pen with increased width
-            QPen pen(QColor(0, 255, 0, 180));
+        // Set pen color to match RGB values
+        QColor circleColor(avgRed, avgGreen, avgBlue);
+        QPen pen(circleColor);
         pen.setWidth(5);
-            painter.setPen(pen);
+        painter.setPen(pen);
             
         // Draw circle
-            painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
+        painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
         painter.end();
         
         // Calculate RGB average inside circle area
@@ -794,12 +827,50 @@ void BingoWidget::updateCameraFrame() {
         if (cameraRgbValueLabel) {
                 cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
                 
-            // Set background color to average RGB
-                QPalette palette = cameraRgbValueLabel->palette();
-                palette.setColor(QPalette::Window, QColor(avgRed, avgGreen, avgBlue));
-                palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
-                cameraRgbValueLabel->setPalette(palette);
-                cameraRgbValueLabel->setAutoFillBackground(true);
+            // 밝기에 따라 텍스트 색상 결정
+            QString textColor = (avgRed + avgGreen + avgBlue > 380) ? "black" : "white";
+            
+            // 스타일시트 설정 (둥근 모서리 유지)
+            cameraRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                             .arg(avgRed).arg(avgGreen).arg(avgBlue).arg(textColor));
+                                             
+            // Circle 슬라이더 값 라벨 색상도 함께 업데이트
+            if (circleValueLabel) {
+                circleValueLabel->setStyleSheet(QString(
+                    "background-color: rgb(%1, %2, %3);"
+                    "color: %4;"
+                    "border-radius: 10px;"
+                    "padding: 3px 8px;"
+                    "min-width: 30px;"
+                    "font-weight: bold;"
+                ).arg(avgRed).arg(avgGreen).arg(avgBlue).arg(textColor));
+            }
+            
+            // 슬라이더 손잡이 색상 업데이트
+            if (circleSlider) {
+                // 슬라이더 핸들 색상을 현재 RGB 값으로 설정
+                circleSlider->setStyleSheet(QString(
+                    "QSlider::groove:horizontal {"
+                    "    border: 1px solid #999999;"
+                    "    height: 8px;"
+                    "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
+                    "    margin: 2px 0;"
+                    "    border-radius: 4px;"
+                    "}"
+                    "QSlider::handle:horizontal {"
+                    "    background: rgb(%1, %2, %3);"
+                    "    border: 1px solid #5c5c5c;"
+                    "    width: 18px;"
+                    "    margin: -6px 0;"
+                    "    border-radius: 9px;"
+                    "}"
+                    "QSlider::handle:horizontal:hover {"
+                    "    background: rgb(%4, %5, %6);"
+                    "    border: 1px solid #333333;"
+                    "}"
+                ).arg(avgRed).arg(avgGreen).arg(avgBlue)
+                 .arg(qMin(avgRed + 20, 255)).arg(qMin(avgGreen + 20, 255)).arg(qMin(avgBlue + 20, 255)));
+            }
         }
         
         // Display the final image with circle
@@ -878,7 +949,13 @@ void BingoWidget::handleCameraDisconnect() {
 
 void BingoWidget::onCircleSliderValueChanged(int value) {
     circleRadius = value;
-    circleValueLabel->setText(QString::number(value) + "%");
+    circleValueLabel->setText(QString::number(value));
+    qDebug() << "Circle radius changed to:" << value;
+    
+    // 프레임이 로드된 경우 동그라미 크기 업데이트
+    if (!originalFrame.isNull()) {
+        updateCameraFrame();
+    }
 }
 
 void BingoWidget::restartCamera()
@@ -1611,24 +1688,18 @@ QPixmap BingoWidget::createBearImage() {
 
 // 선택된 셀의 RGB 값 업데이트 함수 추가
 void BingoWidget::updateCellRgbLabel(const QColor &color) {
-    if (!cellRgbValueLabel)
-        return;
+    if (cellRgbValueLabel) {
+        int r = color.red();
+        int g = color.green();
+        int b = color.blue();
         
-    // RGB 값 텍스트 업데이트
-    cellRgbValueLabel->setText(QString("R: %1  G: %2  B: %3")
-        .arg(color.red()).arg(color.green()).arg(color.blue()));
+        cellRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(r).arg(g).arg(b));
         
-    // 배경색 설정
-    QPalette palette = cellRgbValueLabel->palette();
-    palette.setColor(QPalette::Window, color);
-    
-    // 텍스트 색상 설정 (밝은 배경에는 어두운 텍스트, 어두운 배경에는 밝은 텍스트)
-    if ((color.red() + color.green() + color.blue()) > 380) {
-        palette.setColor(QPalette::WindowText, Qt::black);
-    } else {
-        palette.setColor(QPalette::WindowText, Qt::white);
+        // 밝기에 따라 텍스트 색상 결정
+        QString textColor = (r + g + b > 380) ? "black" : "white";
+        
+        // 스타일시트 설정 (둥근 모서리 유지)
+        cellRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                       .arg(r).arg(g).arg(b).arg(textColor));
     }
-    
-    cellRgbValueLabel->setPalette(palette);
-    cellRgbValueLabel->show(); // 라벨 표시
 }

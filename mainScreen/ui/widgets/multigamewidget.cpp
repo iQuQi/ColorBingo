@@ -53,7 +53,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     bingoVLayout->setContentsMargins(0, 0, 0, 0);
 
     // 빙고 점수 표시 레이블
-    bingoScoreLabel = new QLabel("Bingo: 0", bingoArea);
+    bingoScoreLabel = new QLabel("My Bingo: 0", bingoArea);
     bingoScoreLabel->setAlignment(Qt::AlignCenter);
     QFont scoreFont = bingoScoreLabel->font();
     scoreFont.setPointSize(12);
@@ -134,6 +134,22 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     successTimer = new QTimer(this);
     successTimer->setSingleShot(true);
     connect(successTimer, &QTimer::timeout, this, &MultiGameWidget::hideSuccessAndReset);
+
+    // 상대방 빙고 점수 표시 레이블 추가
+    opponentBingoScoreLabel = new QLabel("Opponent Bingo: 0", bingoArea);
+    opponentBingoScoreLabel->setAlignment(Qt::AlignCenter);
+    QFont opponentScoreFont = opponentBingoScoreLabel->font();
+    opponentScoreFont.setPointSize(12);
+    opponentScoreFont.setBold(true);
+    opponentBingoScoreLabel->setFont(opponentScoreFont);
+    opponentBingoScoreLabel->setMinimumHeight(30);
+
+    // 상대방 빙고 점수 레이블을 빙고판 아래에 추가
+    bingoVLayout->addWidget(opponentBingoScoreLabel, 0, Qt::AlignCenter);
+    if (!opponentBingoScoreLabel) {
+        qDebug() << "opponentBingoScoreLabel is NULL!";
+    }
+    opponentBingoScoreLabel->show();
 
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);
@@ -1048,9 +1064,11 @@ void MultiGameWidget::updateBingoScore() {
     }
 }
 
+
 // 상대 플레이어의 빙고 점수 업데이트
-void MultiGameWidget::updateOpponentScore(int score) {
-    qDebug() << "DEBUG: 🎯 Opponent's Bingo Score Updated:" << score;
+void MultiGameWidget::updateOpponentScore(int opponentScore) {
+    qDebug() << "DEBUG: Updating opponent bingo score to:" << opponentScore;
+    opponentBingoScoreLabel->setText(QString("Opponent Bingo: %1").arg(opponentScore));
 }
 
 // 새로운 함수 추가: 성공 메시지 표시 및 게임 초기화

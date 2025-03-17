@@ -11,40 +11,78 @@
 #include <QLabel>
 #include <QTimer>
 #include <QPainter>
+#include <QIcon>
+#include <QPolygon>
+#include <QPen>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     colorCaptureWidget(nullptr),
     bingoWidget(nullptr),
     matchingWidget(nullptr),
-    multiGameWidget(nullptr)
+    multiGameWidget(nullptr),
+    volumeLevel(2) // Default volume level is 2 (medium)
 {
-    // 기본 창 크기 설정
+    // Set default window size
     resize(800, 600);
     
-    // 스택 위젯 초기화
+    // Initialize stacked widget
     stackedWidget = new QStackedWidget(this);
     setCentralWidget(stackedWidget);
     
-    // 메인 메뉴 화면 초기화
+    // Initialize main menu screen
     mainMenu = new QWidget();
     
-    // 메인 화면 초기화 (mainMenu에 내용 추가)
+    // Initialize main screen (add content to mainMenu)
     setupMainScreen();
     
-    // 메인 메뉴를 스택 위젯에 추가
+    // Add main menu to stacked widget
     stackedWidget->addWidget(mainMenu);
     stackedWidget->setCurrentWidget(mainMenu);
 
-    // 배경음악 시작
+    // Initial volume setting (medium - 0.75)
+    SoundManager::getInstance()->setBackgroundVolume(0.75f);
+    SoundManager::getInstance()->setEffectVolume(0.75f);
+    
+    // Start background music
     SoundManager::getInstance()->playBackgroundMusic();
     
-    qDebug() << "MainWindow 생성 완료, mainMenu 크기:" << mainMenu->size();
-    qDebug() << "stackedWidget 크기:" << stackedWidget->size();
-    qDebug() << "MainWindow 크기:" << size();
+    // Create and setup volume button
+    volumeButton = new QPushButton(this);
+    volumeButton->setFixedSize(60, 60);
+    volumeButton->setStyleSheet(
+        "QPushButton { "
+        "   background-color: rgba(255, 255, 255, 180); "
+        "   border-radius: 10px; "
+        "   border: 3px solid #444444; "
+        "} "
+        "QPushButton:hover { "
+        "   background-color: rgba(255, 255, 255, 220); "
+        "   border: 3px solid #4a86e8; "
+        "} "
+        "QPushButton:pressed { "
+        "   background-color: rgba(220, 220, 220, 220); "
+        "} "
+        "QPushButton:focus { "
+        "   border: 3px solid #444444; "
+        "   outline: none; "
+        "}"
+    );
+    volumeButton->setCursor(Qt::PointingHandCursor);
+    volumeButton->setFocusPolicy(Qt::NoFocus);
+    connect(volumeButton, &QPushButton::clicked, this, &MainWindow::onVolumeButtonClicked);
+    
+    // Initial volume button update
+    updateVolumeButton();
+    // Set initial volume button position
+    updateVolumeButtonPosition();
+    
+    qDebug() << "MainWindow creation completed, mainMenu size:" << mainMenu->size();
+    qDebug() << "stackedWidget size:" << stackedWidget->size();
+    qDebug() << "MainWindow size:" << size();
 }
 
-// 픽셀 스타일의 곰돌이 이미지 생성 함수
+// Pixel style bear image creation function
 QPixmap MainWindow::createBearImage() {
     QPixmap bearImage(80, 80);
     bearImage.fill(Qt::transparent);
@@ -113,14 +151,14 @@ QPixmap MainWindow::createBearImage() {
 
 void MainWindow::setupMainScreen()
 {
-    // 메인 화면 위젯 설정
+    // Setup main screen widget
     QVBoxLayout *mainLayout = new QVBoxLayout(mainMenu);
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
-    // 배경 스타일 설정
+    // Set background style
     mainMenu->setStyleSheet("QWidget { background-color: #f5f5f5; }");
     
-    // 컨텐츠를 담을 중앙 컨테이너 생성
+    // Create central container for content
     centerWidget = new QWidget(mainMenu);
     centerWidget->setStyleSheet("QWidget { background-color: #ffffff; border-radius: 10px; }");
     centerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -129,45 +167,45 @@ void MainWindow::setupMainScreen()
     centerLayout->setSpacing(20);
     centerLayout->setContentsMargins(30, 30, 30, 30);
     
-    // 타이틀 영역을 위한 수평 레이아웃 생성
+    // Create horizontal layout for title area
     QHBoxLayout *titleLayout = new QHBoxLayout();
-    titleLayout->setAlignment(Qt::AlignVCenter); // 모든 요소를 수직 중앙에 정렬
+    titleLayout->setAlignment(Qt::AlignVCenter); // Align all elements to vertical center
     
-    // 곰돌이 이미지 생성
+    // Create bear image
     QPixmap bearPixmap = createBearImage();
     
-    // 왼쪽 곰돌이 이미지 레이블
+    // Left bear image label
     QLabel *leftBearLabel = new QLabel(centerWidget);
     leftBearLabel->setPixmap(bearPixmap);
     leftBearLabel->setFixedSize(bearPixmap.size());
     
-    // 타이틀 레이블
+    // Title label
     QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    // 하단 마진 제거하고 폰트 크기만 유지
+    // Remove bottom margin and keep only font size
     titleLabel->setStyleSheet("font-size: 48px; font-weight: bold; color: #333;");
     
-    // 오른쪽 곰돌이 이미지 레이블
+    // Right bear image label
     QLabel *rightBearLabel = new QLabel(centerWidget);
     rightBearLabel->setPixmap(bearPixmap);
     rightBearLabel->setFixedSize(bearPixmap.size());
     
-    // 레이아웃에 위젯 추가 (모두 수직 중앙 정렬로 설정)
+    // Add widgets to layout (all set to vertical center alignment)
     titleLayout->addWidget(leftBearLabel, 0, Qt::AlignVCenter);
-    titleLayout->addWidget(titleLabel, 1, Qt::AlignVCenter); // 1은 stretch factor, 더 많은 공간을 차지하게 함
+    titleLayout->addWidget(titleLabel, 1, Qt::AlignVCenter); // 1 is stretch factor, takes more space
     titleLayout->addWidget(rightBearLabel, 0, Qt::AlignVCenter);
     
-    // 타이틀 레이아웃에 위아래 여백 추가 (전체적으로 간격 유지)
+    // Add top and bottom margin to title layout (keep overall spacing)
     titleLayout->setContentsMargins(0, 0, 0, 20);
     
-    // 타이틀 레이아웃을 메인 레이아웃에 추가
+    // Add title layout to main layout
     centerLayout->addLayout(titleLayout);
     
-    // 버튼 공통 크기 설정
+    // Set common button size
     const int BUTTON_WIDTH = 280;
     const int BUTTON_HEIGHT = 70;
     
-    // 버튼 공통 스타일 
+    // Button common style
     QString blueButtonStyle = 
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
@@ -181,7 +219,7 @@ void MainWindow::setupMainScreen()
         "   background-color: #2a66c8;"
         "}";
     
-    // 파스텔 연초록 스타일 추가
+    // Add pastel light green style
     QString greenButtonStyle = 
         "QPushButton {"
         "   font-size: 24px; font-weight: bold; padding: 15px 30px;"
@@ -208,36 +246,36 @@ void MainWindow::setupMainScreen()
         "   background-color: #c0392b;"
         "}";
     
-    // Single Game 버튼 (이전의 Start Bingo 버튼)
+    // Single Game button (previously Start Bingo button)
     QPushButton *singleGameButton = new QPushButton("Single Game", centerWidget);
     singleGameButton->setStyleSheet(blueButtonStyle);
     singleGameButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
     singleGameButton->setCursor(Qt::PointingHandCursor);
     centerLayout->addWidget(singleGameButton, 0, Qt::AlignCenter);
     
-    // Multi Game 버튼 (새로 추가)
+    // Multi Game button (newly added)
     QPushButton *multiGameButton = new QPushButton("Multi Game", centerWidget);
     multiGameButton->setStyleSheet(greenButtonStyle);
     multiGameButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
     multiGameButton->setCursor(Qt::PointingHandCursor);
     centerLayout->addWidget(multiGameButton, 0, Qt::AlignCenter);
     
-    // Exit 버튼
+    // Exit button
     QPushButton *exitButton = new QPushButton("Exit", centerWidget);
     exitButton->setStyleSheet(redButtonStyle);
     exitButton->setFixedSize(BUTTON_WIDTH, BUTTON_HEIGHT);
     exitButton->setCursor(Qt::PointingHandCursor);
     centerLayout->addWidget(exitButton, 0, Qt::AlignCenter);
     
-    // 컨테이너 크기 조정
+    // Adjust container size
     centerWidget->adjustSize();
     
-    // 메인 레이아웃에 스트레치와 중앙 컨테이너 추가
+    // Add stretch and central container to main layout
     mainLayout->addStretch(1);
     mainLayout->addWidget(centerWidget, 0, Qt::AlignCenter);
     mainLayout->addStretch(1);
     
-    // 시그널 연결
+    // Connect signals
     connect(singleGameButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
     //connect(multiGameButton, &QPushButton::clicked, this, &MainWindow::showMultiGameScreen);
     connect(multiGameButton, &QPushButton::clicked, this, [=]() {
@@ -246,23 +284,24 @@ void MainWindow::setupMainScreen()
     });
     connect(exitButton, &QPushButton::clicked, this, &QMainWindow::close);
     
-    qDebug() << "setupMainScreen 완료, centerWidget 크기:" << centerWidget->size();
+    qDebug() << "setupMainScreen completed, centerWidget size:" << centerWidget->size();
 }
 
-// 단일 게임 화면 표시 (이전의 onStartBingoClicked)
+// Single game screen display (previously onStartBingoClicked)
 void MainWindow::showBingoScreen()
 {
     qDebug() << "DEBUG: Single Game button clicked";
     
     // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
-    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
-        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
+//    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
+//        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
         
-        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
-        QThread::msleep(500);
-    }
+//        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
+//        QThread::msleep(500);
+//    }
     
     // 기존 bingoWidget이 있고 카메라가 실행 중이라면 리소스 해제
+//    if (bingoWidget && bingoWidget->isCameraCapturing()) {
     if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
         qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
         V4L2Camera* camera = bingoWidget->getCamera();
@@ -272,37 +311,38 @@ void MainWindow::showBingoScreen()
             qDebug() << "DEBUG: BingoWidget camera explicitly stopped";
         }
         
-        // 카메라 리소스 완전 해제를 위한 대기 시간
+        // Wait time for complete camera resource release
         QThread::msleep(500);
     }
     
     if (!colorCaptureWidget) {
         qDebug() << "DEBUG: Creating new ColorCaptureWidget";
         colorCaptureWidget = new ColorCaptureWidget(this);
-        // 스택 위젯에 추가
+        // Add to stacked widget
         stackedWidget->addWidget(colorCaptureWidget);
     }
     
-    // 단일 게임 모드로 설정
+    // Set to single game mode
     colorCaptureWidget->setGameMode(GameMode::SINGLE);
     qDebug() << "DEBUG: ColorCaptureWidget set to SINGLE mode";
     
-    // 기존 연결 해제 후 새로운 연결 설정
+    // Disconnect previous connections and set up new ones
     qDebug() << "DEBUG: Reconnecting signals for Single Game mode";
-    disconnect(colorCaptureWidget, nullptr, this, nullptr); // 기존 모든 연결 해제
+    disconnect(colorCaptureWidget, nullptr, this, nullptr); // Disconnect all existing connections
     connect(colorCaptureWidget, &ColorCaptureWidget::createBingoRequested, 
             this, &MainWindow::onCreateBingoRequested);
     connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested, 
             this, &MainWindow::showMainMenu);
     
-    // 현재 위젯을 색상 캡처 위젯으로 변경
+    // Change current widget to color capture widget
     stackedWidget->setCurrentWidget(colorCaptureWidget);
     
-    // 리소스가 완전히 초기화될 시간을 주기 위해 짧은 지연 추가
+    // Add short delay to allow resources to fully initialize
     QTimer::singleShot(500, this, [this]() {
         qDebug() << "DEBUG: ColorCaptureWidget now displayed";
     });
 }
+
 
 // 매칭 화면 표시 (멀티게임 버튼 클릭 시, 멀티게임 화면 표시 전)
 void MainWindow::showMatchingScreen() {
@@ -319,19 +359,21 @@ void MainWindow::showMatchingScreen() {
 
 
 // 멀티게임 화면 표시 (새로 추가)
+// Multi game screen display (newly added)
 void MainWindow::showMultiGameScreen()
 {
     qDebug() << "DEBUG: Show Multi Game Screen";
 
     // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
-    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
-        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
+//    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
+//        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
 
-        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
-        QThread::msleep(500);
-    }
+//        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
+//        QThread::msleep(500);
+//    }
 
-    // 기존 bingoWidget이 있고 카메라가 실행 중이라면 리소스 해제
+    // 기존 multiGameWidget이 있고 카메라가 실행 중이라면 리소스 해제
+//    if (multiGameWidget && multiGameWidget->isCameraCapturing()) {
     if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
         qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
         V4L2Camera* camera = multiGameWidget->getCamera();
@@ -341,33 +383,33 @@ void MainWindow::showMultiGameScreen()
             qDebug() << "DEBUG: BingoWidget camera explicitly stopped";
         }
 
-        // 카메라 리소스 완전 해제를 위한 대기 시간
+        // Wait time for complete camera resource release
         QThread::msleep(500);
     }
 
     if (!colorCaptureWidget) {
         qDebug() << "DEBUG: Creating new ColorCaptureWidget";
         colorCaptureWidget = new ColorCaptureWidget(this);
-        // 스택 위젯에 추가
+        // Add to stacked widget
         stackedWidget->addWidget(colorCaptureWidget);
     }
 
-    // 멀티 게임 모드로 설정
+    // Set to multi game mode
     colorCaptureWidget->setGameMode(GameMode::MULTI);
     qDebug() << "DEBUG: ColorCaptureWidget set to MULTI mode";
     
-    // 기존 연결 해제 후 새로운 연결 설정
+    // Disconnect previous connections and set up new ones
     qDebug() << "DEBUG: Reconnecting signals for Multi Game mode";
-    disconnect(colorCaptureWidget, nullptr, this, nullptr); // 기존 모든 연결 해제
+    disconnect(colorCaptureWidget, nullptr, this, nullptr); // Disconnect all existing connections
     connect(colorCaptureWidget, &ColorCaptureWidget::createMultiGameRequested,
             this, &MainWindow::onCreateMultiGameRequested);
     connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested,
             this, &MainWindow::showMainMenu);
 
-    // 현재 위젯을 색상 캡처 위젯으로 변경
+    // Change current widget to color capture widget
     stackedWidget->setCurrentWidget(colorCaptureWidget);
 
-    // 리소스가 완전히 초기화될 시간을 주기 위해 짧은 지연 추가
+    // Add short delay to allow resources to fully initialize
     QTimer::singleShot(500, this, [this]() {
         qDebug() << "DEBUG: ColorCaptureWidget now displayed";
     });
@@ -377,20 +419,20 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
 {
     qDebug() << "DEBUG: Create Bingo requested with" << colors.size() << "colors";
     
-    // 카메라 리소스 해제 - 완전히 닫기
+    // Release camera resources - fully close
     if (colorCaptureWidget) {
         qDebug() << "DEBUG: Stopping camera before creating BingoWidget";
         colorCaptureWidget->stopCameraCapture();
         
-        // 카메라 자원 해제를 위한 대기 시간
+        // Wait time for camera resource release
         qDebug() << "DEBUG: Waiting for camera resources to be fully released";
-        QThread::msleep(1500); // 1.5초 대기
+        QThread::msleep(1500); // Wait 1.5 seconds
     }
     
-    // 기존 bingoWidget이 있다면 안전하게 정리
+    // Safely clean up existing bingoWidget if present
     if (bingoWidget) {
         qDebug() << "DEBUG: Cleaning up previous BingoWidget";
-        disconnect(bingoWidget); // 시그널 연결 해제
+        disconnect(bingoWidget); // Disconnect signals
         stackedWidget->removeWidget(bingoWidget);
         delete bingoWidget;
         bingoWidget = nullptr;
@@ -398,28 +440,25 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
 
     if (multiGameWidget) {
         qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
-        disconnect(multiGameWidget); // 시그널 연결 해제
+        disconnect(multiGameWidget); // Disconnect signals
         stackedWidget->removeWidget(multiGameWidget);
         delete multiGameWidget;
         multiGameWidget = nullptr;
     }
     
-    // BingoWidget 생성
+    // Create BingoWidget
     qDebug() << "DEBUG: Creating BingoWidget";
     bingoWidget = new BingoWidget(this, colors);
     
-    // 시그널 연결
+    // Connect signals
     connect(bingoWidget, &BingoWidget::backToMainRequested,
             this, &MainWindow::showMainMenu, Qt::QueuedConnection);
     
-    // 스택 위젯에 추가 및 현재 위젯으로 설정
-//=======
-   // bingoWidget = new BingoWidget(this);
 
 
-   // stackedWidget->addWidget(mainMenu);
 
-//>>>>>>> Stashed changes
+    // Add to stacked widget and set as current widget
+
     stackedWidget->addWidget(bingoWidget);
     stackedWidget->setCurrentWidget(bingoWidget);
     qDebug() << "DEBUG: BingoWidget now displayed";
@@ -429,20 +468,20 @@ void MainWindow::onCreateMultiGameRequested(const QList<QColor> &colors)
 {
     qDebug() << "DEBUG: Create Multi Game requested with" << colors.size() << "colors";
 
-    // 카메라 리소스 해제 - 완전히 닫기
+    // Release camera resources - fully close
     if (colorCaptureWidget) {
         qDebug() << "DEBUG: Stopping camera before creating MultiGameWidget";
         colorCaptureWidget->stopCameraCapture();
 
-        // 카메라 자원 해제를 위한 대기 시간
+        // Wait time for camera resource release
         qDebug() << "DEBUG: Waiting for camera resources to be fully released";
-        QThread::msleep(1500); // 1.5초 대기
+        QThread::msleep(1500); // Wait 1.5 seconds
     }
 
-    // 기존 bingoWidget이 있다면 안전하게 정리
+    // Safely clean up existing bingoWidget if present
     if (bingoWidget) {
         qDebug() << "DEBUG: Cleaning up previous BingoWidget";
-        disconnect(bingoWidget); // 시그널 연결 해제
+        disconnect(bingoWidget); // Disconnect signals
         stackedWidget->removeWidget(bingoWidget);
         delete bingoWidget;
         bingoWidget = nullptr;
@@ -450,32 +489,32 @@ void MainWindow::onCreateMultiGameRequested(const QList<QColor> &colors)
 
     if (multiGameWidget) {
         qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
-        disconnect(multiGameWidget); // 시그널 연결 해제
+        disconnect(multiGameWidget); // Disconnect signals
         stackedWidget->removeWidget(multiGameWidget);
         delete multiGameWidget;
         multiGameWidget = nullptr;
     }
 
-    // BingoWidget 생성
+    // Create MultiGameWidget
     qDebug() << "DEBUG: Creating MultiGameWidget";
     multiGameWidget = new MultiGameWidget(this, colors);
 
-    // 시그널 연결
+    // Connect signals
     connect(multiGameWidget, &MultiGameWidget::backToMainRequested,
             this, &MainWindow::showMainMenu, Qt::QueuedConnection);
 
-    // 스택 위젯에 추가 및 현재 위젯으로 설정
+    // Add to stacked widget and set as current widget
     stackedWidget->addWidget(multiGameWidget);
     stackedWidget->setCurrentWidget(multiGameWidget);
     qDebug() << "DEBUG: MultiGameWidget now displayed";
 }
 
-// 메인 메뉴 표시 (이전의 onBingoBackRequested)
+// Display main menu (previously onBingoBackRequested)
 void MainWindow::showMainMenu()
 {
     qDebug() << "DEBUG: Back to main menu requested - SAFE HANDLING";
     
-    // 위젯들의 카메라 리소스 확실히 해제
+    // Ensure widget camera resources are released
     if (colorCaptureWidget && stackedWidget->currentWidget() == colorCaptureWidget) {
         qDebug() << "DEBUG: Stopping ColorCaptureWidget camera before returning to main menu";
         colorCaptureWidget->stopCameraCapture();
@@ -502,11 +541,11 @@ void MainWindow::showMainMenu()
         QThread::msleep(500);
     }
     
-    // 이벤트 루프가 완료될 때까지 객체 삭제 지연
+    // Delay object deletion until event loop completes
     QTimer::singleShot(0, this, [this]() {
         qDebug() << "DEBUG: Executing delayed widget cleanup";
         
-        // 메인 메뉴로 전환
+        // Switch to main menu
         stackedWidget->setCurrentWidget(mainMenu);
         qDebug() << "DEBUG: Main menu now displayed";
     });
@@ -540,6 +579,9 @@ bool MainWindow::event(QEvent *event)
 {
     if (event->type() == QEvent::Resize) {
         updateCenterWidgetPosition();
+        
+        // 음량 버튼 위치 업데이트 - 분리된 함수 호출
+        updateVolumeButtonPosition();
     }
     return QMainWindow::event(event);
 }
@@ -553,11 +595,165 @@ void MainWindow::updateCenterWidgetPosition()
     }
 }
 
+// Volume control button click event handler
+void MainWindow::onVolumeButtonClicked()
+{
+    // Save previous level
+    int oldLevel = volumeLevel;
+    
+    // Cycle volume level: 2(medium) -> 3(high) -> 1(low) -> 2(medium)
+    volumeLevel = (volumeLevel % 3) + 1;
+    
+    // Set SoundManager volume
+    float volume = 0.0f;
+    QString levelText;
+    switch (volumeLevel) {
+        case 1: // Low
+            volume = 0.3f;
+            levelText = "Low";
+            break;
+        case 2: // Medium (Default)
+            volume = 0.75f;  // Increased from 0.7 to 0.75
+            levelText = "Medium";
+            break;
+        case 3: // High
+            volume = 0.82f;   // Changed from 0.8 to 0.82
+            levelText = "High";
+            break;
+    }
+    
+    qDebug() << "=== Volume Button Clicked ===";
+    qDebug() << "Volume level changed: " << oldLevel << " -> " << volumeLevel 
+             << " (" << levelText << ", value: " << volume << ")";
+    
+    // Set background music and sound effect volume
+    SoundManager::getInstance()->setBackgroundVolume(volume);
+    SoundManager::getInstance()->setEffectVolume(volume);
+    
+    // Update button image
+    updateVolumeButton();
+}
+
+// Update volume button status
+void MainWindow::updateVolumeButton()
+{
+    QPixmap volumeIcon = createVolumeImage(volumeLevel);
+    volumeButton->setIcon(QIcon(volumeIcon));
+    volumeButton->setIconSize(QSize(50, 50)); // Adjust icon size
+    
+    // Set border color to dark gray and add focus state
+    QString buttonStyle = 
+        "QPushButton { "
+        "   background-color: rgba(255, 255, 255, 180); "
+        "   border-radius: 10px; "
+        "   border: 3px solid #444444; "
+        "} "
+        "QPushButton:hover { "
+        "   background-color: rgba(255, 255, 255, 220); "
+        "   border: 3px solid #4a86e8; "
+        "} "
+        "QPushButton:pressed { "
+        "   background-color: rgba(220, 220, 220, 220); "
+        "} "
+        "QPushButton:focus { "
+        "   border: 3px solid #444444; "
+        "   outline: none; "
+        "}";
+    
+    volumeButton->setStyleSheet(buttonStyle);
+    
+    // Set button to not receive focus
+    volumeButton->setFocusPolicy(Qt::NoFocus);
+    
+    // Position is handled in updateVolumeButtonPosition() function
+}
+
+// Update volume button position (separated function)
+void MainWindow::updateVolumeButtonPosition()
+{
+    if (volumeButton) {
+        int margin = 15;
+        volumeButton->move(width() - volumeButton->width() - margin, margin);
+    }
+}
+
+// Pixel style volume icon creation
+QPixmap MainWindow::createVolumeImage(int volumeLevel)
+{
+    QPixmap volumeImage(40, 40);
+    volumeImage.fill(Qt::transparent);
+    QPainter painter(&volumeImage);
+    
+    // Disable antialiasing (for pixel feel)
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    
+    // Common colors
+    QColor darkGray(50, 50, 50);
+    
+    // Draw speaker body (always displayed)
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(darkGray);
+    
+    // Speaker body (pixel style)
+    painter.drawRect(8, 14, 8, 12); // Speaker rectangular body
+    
+    // Speaker front (triangle pixel style)
+    painter.drawRect(16, 14, 2, 12); // Connector
+    painter.drawRect(18, 12, 2, 16); // Front part 1
+    painter.drawRect(20, 11, 2, 18); // Front part 2
+    painter.drawRect(22, 10, 2, 20); // Front part 3
+    
+    // Show sound waves (represented by individual rectangles in pixel style)
+    painter.setPen(Qt::NoPen);
+    
+    // First sound wave curve (always displayed, smallest curve)
+    if (volumeLevel >= 1) {
+        painter.drawRect(26, 15, 2, 2); // Top
+        painter.drawRect(26, 23, 2, 2); // Bottom
+        painter.drawRect(28, 13, 2, 2); // Top 2
+        painter.drawRect(28, 25, 2, 2); // Bottom 2
+        painter.drawRect(30, 14, 2, 12); // Vertical line
+    }
+    
+    // Second sound wave curve (displayed in levels 2, 3)
+    if (volumeLevel >= 2) {
+        painter.drawRect(32, 10, 2, 2); // Top
+        painter.drawRect(32, 28, 2, 2); // Bottom
+        painter.drawRect(34, 8, 2, 2); // Top 2
+        painter.drawRect(34, 30, 2, 2); // Bottom 2
+        painter.drawRect(36, 10, 2, 20); // Vertical line
+    }
+    
+    // Third sound wave curve (displayed only in level 3, largest curve)
+    if (volumeLevel == 3) {
+        painter.drawRect(38, 6, 2, 2); // Top
+        painter.drawRect(38, 32, 2, 2); // Bottom
+        painter.drawRect(40, 4, 2, 2); // Top 2
+        painter.drawRect(40, 34, 2, 2); // Bottom 2
+        painter.drawRect(42, 6, 2, 28); // Vertical line
+    }
+    
+    // Add X mark for low volume (level 1)
+    if (volumeLevel == 1) {
+        painter.setBrush(Qt::red);
+        // Pixel style X mark
+        painter.drawRect(30, 16, 2, 2);
+        painter.drawRect(32, 14, 2, 2);
+        painter.drawRect(34, 16, 2, 2);
+        painter.drawRect(32, 18, 2, 2);
+        painter.drawRect(30, 20, 2, 2);
+        painter.drawRect(34, 20, 2, 2);
+        painter.drawRect(32, 22, 2, 2);
+    }
+    
+    return volumeImage;
+}
+
 MainWindow::~MainWindow()
 {
     qDebug() << "DEBUG: MainWindow destructor called";
     
-    // 안전한 메모리 해제
+    // Safe memory deallocation
     if (colorCaptureWidget) {
         colorCaptureWidget->stopCameraCapture();
         delete colorCaptureWidget;
@@ -574,10 +770,10 @@ MainWindow::~MainWindow()
         multiGameWidget = nullptr;
     }
 
-    // 사운드 리소스 정리
+    // Clean up sound resources
     SoundManager::getInstance()->cleanup();
     
-    // 메인 메뉴와 스택 위젯은 Qt가 자동으로 해제
+    // Main menu and stacked widget will be automatically released by Qt
     
     qDebug() << "DEBUG: MainWindow destructor completed";
 

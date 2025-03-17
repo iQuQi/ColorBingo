@@ -21,6 +21,7 @@
 #include <QFile>
 #include <QSocketNotifier>
 #include <linux/input.h>
+#include <QImage>
 #include "hardwareInterface/v4l2camera.h"
 #include "hardwareInterface/webcambutton.h"
 
@@ -117,6 +118,7 @@ private:
     // 카메라 관련 위젯
     QLabel *cameraView;
     V4L2Camera *camera;
+    QImage originalFrame;       // 카메라에서 캡처한 원본 프레임
     
     // 컨트롤 버튼
     QPushButton *startButton;
