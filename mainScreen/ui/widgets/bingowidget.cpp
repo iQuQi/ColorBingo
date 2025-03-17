@@ -22,13 +22,14 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     selectedCell(-1, -1),
     bingoCount(0),
     remainingSeconds(120), // 2분 = 120초 타이머 초기화
-    sliderWidget(nullptr)  // 추가된 부분
+    sliderWidget(nullptr),  // 추가된 부분
+    cellRgbValueLabel(nullptr)  // 새 RGB 라벨 초기화
 {
     qDebug() << "BingoWidget constructor started";
     
     // Initialize main variables (prevent null pointers)
     cameraView = nullptr;
-    rgbValueLabel = nullptr;
+    cameraRgbValueLabel = nullptr;  // 변수 이름 변경
     circleSlider = nullptr;
     rgbCheckBox = nullptr;
     camera = nullptr;
@@ -55,6 +56,23 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     bingoScoreLabel->setFont(scoreFont);
     bingoScoreLabel->setMinimumHeight(30);
 
+    // 빙고 셀 RGB 값 표시 레이블 추가
+    cellRgbValueLabel = new QLabel("R: 0  G: 0  B: 0", bingoArea);
+    cellRgbValueLabel->setFrameShape(QFrame::Box);
+    cellRgbValueLabel->setFixedHeight(30);
+    cellRgbValueLabel->setFixedWidth(300); // 카메라 라벨과 같은 너비
+    cellRgbValueLabel->setAlignment(Qt::AlignCenter);
+    QFont cellRgbFont = cellRgbValueLabel->font();
+    cellRgbFont.setPointSize(12);
+    cellRgbValueLabel->setFont(cellRgbFont);
+    cellRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 가능하도록
+    
+    // 초기 배경색과 텍스트 색상 설정 (검은 배경에 흰색 텍스트)
+    QPalette cellPalette = cellRgbValueLabel->palette();
+    cellPalette.setColor(QPalette::Window, QColor(0, 0, 0));
+    cellPalette.setColor(QPalette::WindowText, Qt::white);
+    cellRgbValueLabel->setPalette(cellPalette);
+
     // Status message label for game instructions
     statusMessageLabel = new QLabel("Please select a cell to match colors", bingoArea);
     statusMessageLabel->setAlignment(Qt::AlignCenter);
@@ -69,6 +87,13 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
 
     // Add score label above the grid
     bingoVLayout->addWidget(bingoScoreLabel);
+
+    // 빙고 셀 RGB 값 라벨 추가
+    bingoVLayout->addWidget(cellRgbValueLabel, 0, Qt::AlignCenter);
+    
+    // 초기 RGB 값 표시 확실하게 설정
+    QColor initialColor(0, 0, 0);
+    updateCellRgbLabel(initialColor);
 
     // 빙고 그리드를 담을 컨테이너 위젯
     QWidget* gridWidget = new QWidget(bingoArea);
@@ -140,15 +165,23 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     cameraVLayout->addStretch(1);
 
     // 1. RGB 값 표시 레이블 (맨 위에 배치)
-    rgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
-    rgbValueLabel->setFrameShape(QFrame::Box);
-    rgbValueLabel->setFixedHeight(30);
-    rgbValueLabel->setFixedWidth(300); // Same width as camera
-    rgbValueLabel->setAlignment(Qt::AlignCenter);
-    QFont rgbFont = rgbValueLabel->font();
+    cameraRgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
+    cameraRgbValueLabel->setFrameShape(QFrame::Box);
+    cameraRgbValueLabel->setFixedHeight(30);
+    cameraRgbValueLabel->setFixedWidth(300); // Same width as camera
+    cameraRgbValueLabel->setAlignment(Qt::AlignCenter);
+    QFont rgbFont = cameraRgbValueLabel->font();
     rgbFont.setPointSize(12);
-    rgbValueLabel->setFont(rgbFont);
-    cameraVLayout->addWidget(rgbValueLabel, 0, Qt::AlignCenter);
+    cameraRgbValueLabel->setFont(rgbFont);
+    cameraRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 활성화
+    
+    // 초기 배경색과 텍스트 색상 설정 (검은 배경에 흰색 텍스트)
+    QPalette cameraPalette = cameraRgbValueLabel->palette();
+    cameraPalette.setColor(QPalette::Window, QColor(0, 0, 0));
+    cameraPalette.setColor(QPalette::WindowText, Qt::white);
+    cameraRgbValueLabel->setPalette(cameraPalette);
+    
+    cameraVLayout->addWidget(cameraRgbValueLabel, 0, Qt::AlignCenter);
 
     // 2. 카메라 뷰 (중간에 배치)
     cameraView = new QLabel(cameraArea);
@@ -370,6 +403,9 @@ void BingoWidget::selectCell(int row, int col) {
                    .arg(borderStyle);
     bingoCells[row][col]->setStyleSheet(style);
     
+    // 셀 RGB 값 업데이트 및 표시
+    updateCellRgbLabel(cellColors[row][col]);
+    
     // 카메라 시작
     startCamera();
     
@@ -387,6 +423,12 @@ void BingoWidget::deselectCell() {
         
         // 선택 상태 초기화
         selectedCell = qMakePair(-1, -1);
+        
+        // RGB 값 라벨 초기화 (0,0,0으로 설정)
+        if (cellRgbValueLabel) {
+            QColor defaultColor(0, 0, 0);
+            updateCellRgbLabel(defaultColor);
+        }
         
         // Stop camera
         stopCamera();
@@ -748,15 +790,15 @@ void BingoWidget::updateCameraFrame() {
         }
         
         // Update RGB values (always, no need for conditional check)
-        if (rgbValueLabel) {
-                rgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
+        if (cameraRgbValueLabel) {
+                cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
                 
             // Set background color to average RGB
-                QPalette palette = rgbValueLabel->palette();
+                QPalette palette = cameraRgbValueLabel->palette();
                 palette.setColor(QPalette::Window, QColor(avgRed, avgGreen, avgBlue));
                 palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
-                rgbValueLabel->setPalette(palette);
-                rgbValueLabel->setAutoFillBackground(true);
+                cameraRgbValueLabel->setPalette(palette);
+                cameraRgbValueLabel->setAutoFillBackground(true);
         }
         
         // Display the final image with circle
@@ -1386,14 +1428,14 @@ void BingoWidget::updateRgbValues() {
                        (frame.width() * circleRadius) / 100);
                        
     // RGB 값 업데이트
-    rgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
+    cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
     
     // 배경색 설정 (평균 RGB 값)
-    QPalette palette = rgbValueLabel->palette();
+    QPalette palette = cameraRgbValueLabel->palette();
     palette.setColor(QPalette::Window, QColor(avgRed, avgGreen, avgBlue));
     palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
-    rgbValueLabel->setPalette(palette);
-    rgbValueLabel->setAutoFillBackground(true);
+    cameraRgbValueLabel->setPalette(palette);
+    cameraRgbValueLabel->setAutoFillBackground(true);
 }
 
 void BingoWidget::showEvent(QShowEvent *event)
@@ -1479,4 +1521,28 @@ QPixmap BingoWidget::createBearImage() {
     
     qDebug() << "Created adjusted pixel-style bear drawing, size:" << bearImage.width() << "x" << bearImage.height();
     return bearImage;
+}
+
+// 선택된 셀의 RGB 값 업데이트 함수 추가
+void BingoWidget::updateCellRgbLabel(const QColor &color) {
+    if (!cellRgbValueLabel)
+        return;
+        
+    // RGB 값 텍스트 업데이트
+    cellRgbValueLabel->setText(QString("R: %1  G: %2  B: %3")
+        .arg(color.red()).arg(color.green()).arg(color.blue()));
+        
+    // 배경색 설정
+    QPalette palette = cellRgbValueLabel->palette();
+    palette.setColor(QPalette::Window, color);
+    
+    // 텍스트 색상 설정 (밝은 배경에는 어두운 텍스트, 어두운 배경에는 밝은 텍스트)
+    if ((color.red() + color.green() + color.blue()) > 380) {
+        palette.setColor(QPalette::WindowText, Qt::black);
+    } else {
+        palette.setColor(QPalette::WindowText, Qt::white);
+    }
+    
+    cellRgbValueLabel->setPalette(palette);
+    cellRgbValueLabel->show(); // 라벨 표시
 }

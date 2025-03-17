@@ -129,7 +129,7 @@ private:
     
     // RGB 값 표시 관련 위젯
     QCheckBox *rgbCheckBox;
-    QLabel *rgbValueLabel;
+    QLabel *cameraRgbValueLabel;
 
     // 타이머
     QTimer *fadeXTimer;         // X 표시 사라지는 타이머
@@ -183,6 +183,11 @@ private:
 
     // 멤버 변수들
     QPixmap overlayCircle;  // 원형 오버레이 픽스맵 추가
+
+    // 선택된 셀의 RGB 값을 표시할 라벨 추가
+    QLabel *cellRgbValueLabel;
+
+    void updateCellRgbLabel(const QColor &color);
 };
 
 #endif // BINGOWIDGET_H
