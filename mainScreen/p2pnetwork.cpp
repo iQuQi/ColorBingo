@@ -4,6 +4,7 @@
 #include <QDebug>
 
 P2PNetwork::P2PNetwork(QObject *parent) : QObject(parent), isMatched(false), isMatchingActive(false) {
+    qDebug() << "DEBUG: P2PNetwork constructor started";
     udpSocket = new QUdpSocket(this);
     udpSocket->bind(45454, QUdpSocket::ShareAddress);
     connect(udpSocket, &QUdpSocket::readyRead, this, &P2PNetwork::processPendingDatagrams);
@@ -30,9 +31,9 @@ void P2PNetwork::startMatching() {
 void P2PNetwork::sendMatchRequest() {
     QByteArray message = "MATCH_REQUEST";
     udpSocket->writeDatagram(message, QHostAddress::Broadcast, 45454);
-    qDebug() << "📡 Match request sent via broadcast";
-    qDebug() << "isMatched: " << isMatched;
-    qDebug() << "isMatchingActive: " << isMatchingActive;
+    qDebug() << "DEBUG: 📡 Match request sent via broadcast";
+    qDebug() << "DEBUG: isMatched: " << isMatched;
+    qDebug() << "DEBUG: isMatchingActive: " << isMatchingActive;
 }
 
 // ✅ UDP 메시지 수신 → "MATCH_RESPONSE"를 보내는 보드 목록 저장
@@ -54,7 +55,7 @@ void P2PNetwork::processPendingDatagrams() {
             udpSocket->writeDatagram("MATCH_RESPONSE", sender, 45454);
         } else if (datagram == "MATCH_RESPONSE") {
             discoveredBoards.insert(senderIP);
-            qDebug() << "📡 Match response received from:" << senderIP;
+            qDebug() << "DEBUG: 📡 Match response received from:" << senderIP;
         }
     }
 
@@ -65,7 +66,7 @@ void P2PNetwork::processPendingDatagrams() {
         QString peerIP = boardList[QRandomGenerator::global()->bounded(boardList.size())];
 
         //emit matchFound(peerIP);
-        qDebug() << "🎯 Match found with:" << peerIP;
+        qDebug() << "DEBUG: 🎯 Match found with:" << peerIP;
         isMatched = true;
         matchTimer->stop();  // 스캔 중지
 
@@ -79,21 +80,21 @@ void P2PNetwork::onNewConnection() {
 
     // ✅ 서버 역할: 연결된 상대 보드의 IP 출력
     QString peerIP = connectedClient->peerAddress().toString();
-    qDebug() << "🌐 New client connected! Peer IP:" << peerIP;
+    qDebug() << "DEBUG: 🌐 New client connected! Peer IP:" << peerIP;
     isMatched = true;
     isMatchingActive = false;
     matchTimer->stop();
-    qDebug() << "emit matchFound";
+    qDebug() << "DEBUG: emit matchFound";
     // ✅ UI 업데이트
     emit matchFound(peerIP);
-    qDebug() << "after emit matchFound";
+    qDebug() << "DEBUG: after emit matchFound";
     //emit switchToBingoScreen();
 }
 
 void P2PNetwork::onClientConnected() {
     // ✅ 클라이언트 역할: 연결된 상대 보드의 IP 출력
     QString peerIP = clientSocket->peerAddress().toString();
-    qDebug() << "🔗 Connected to peer! Peer IP:" << peerIP;
+    qDebug() << "DEBUG: 🔗 Connected to peer! Peer IP:" << peerIP;
     isMatched = true;
     isMatchingActive = false;
     matchTimer->stop();
@@ -119,7 +120,7 @@ QString P2PNetwork::getLocalIPAddress() {
 }
 
 void P2PNetwork::disconnectFromPeer() {
-    qDebug() << "🔌 Disconnecting from peer...";
+    qDebug() << "DEBUG: 🔌 Disconnecting from peer...";
 
     isMatched = false;
     isMatchingActive = false;
@@ -147,9 +148,55 @@ void P2PNetwork::disconnectFromPeer() {
     isMatched = false;
     discoveredBoards.clear();
 
-    qDebug() << "✅ Successfully disconnected!";
+    qDebug() << "DEBUG: ✅ Successfully disconnected!";
 }
 
+// 상대보드에 점수 전송
+void P2PNetwork::sendBingoScore(int score) {
+    if (clientSocket->state() == QAbstractSocket::ConnectedState) {
+        QString message = QString("SCORE_UPDATE:%1").arg(score);
+        clientSocket->write(message.toUtf8() + "\n");
+        clientSocket->flush();
+        qDebug() << "DEBUG: 📤 Sent score update to opponent:" << score;
+    } else if (connectedClient) {
+        QString message = QString("SCORE_UPDATE:%1").arg(score);
+        connectedClient->write(message.toUtf8() + "\n");
+        connectedClient->flush();
+        qDebug() << "DEBUG: 📤 Sent score update to opponent:" << score;
+    }
+}
+
+void P2PNetwork::sendGameOverMessage() {
+    QString message = "GAME_OVER";
+
+    if (clientSocket->state() == QAbstractSocket::ConnectedState) {
+        clientSocket->write(message.toUtf8() + "\n");
+        clientSocket->flush();
+        qDebug() << "DEBUG: 📤 Sent GAME_OVER message to opponent";
+    } else if (connectedClient) {
+        connectedClient->write(message.toUtf8() + "\n");
+        connectedClient->flush();
+        qDebug() << "DEBUG: 📤 Sent GAME_OVER message to opponent";
+    }
+}
+
+void P2PNetwork::onDataReceived() {
+    QTcpSocket *senderSocket = qobject_cast<QTcpSocket*>(sender());
+    if (!senderSocket) return;
+
+    QByteArray data = senderSocket->readAll();
+    QString message = QString(data).trimmed();
+    qDebug() << "DEBUG: 📩 Received message:" << message;
+
+    if (message.startsWith("SCORE_UPDATE:")) {
+        int score = message.mid(13).toInt();
+        emit opponentScoreUpdated(score);  // 점수 업데이트 시그널 발생
+        //qDebug() << "DEBUG: 🔄 Opponent's score updated to:" << score;
+    } else if (message == "GAME_OVER") {
+        qDebug() << "DEBUG: 🎯 Opponent won! Ending game...";
+        emit gameOverReceived();
+    }
+}
 
 /*
 // ✅ TCP 연결 요청을 받은 보드 (서버 역할)

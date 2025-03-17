@@ -1,3 +1,4 @@
+
 #ifndef BINGOWIDGET_H
 #define BINGOWIDGET_H
 

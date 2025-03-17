@@ -15,6 +15,8 @@ public:
 
     void startMatching();
     void disconnectFromPeer();
+    void sendBingoScore(int score);
+    void sendGameOverMessage();
 
     bool isMatchingActive;
     bool isMatched;
@@ -22,14 +24,15 @@ public:
 signals:
     void matchFound(QString peerIP);
     void switchToBingoScreen();
+    void opponentScoreUpdated(int score);
+    void gameOverReceived();
 
 private slots:
     void processPendingDatagrams();
     void onNewConnection();
     void onClientConnected();
-    //void onDataReceived();
+    void onDataReceived();
     void sendMatchRequest();
-
 
 private:
     QString getLocalIPAddress();

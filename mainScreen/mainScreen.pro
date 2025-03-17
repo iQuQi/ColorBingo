@@ -33,6 +33,5 @@ HEADERS  += mainwindow.h \
     p2pnetwork.h
 
 FORMS += mainwindow.ui
->>>>>>> 1e975f51e5dd3bb753c94a1fbb9d18a130d01f93
 
 LIBS += -lpthread

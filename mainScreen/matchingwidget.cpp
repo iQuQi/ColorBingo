@@ -2,10 +2,10 @@
 
 MatchingWidget::MatchingWidget(QWidget *parent)
     : QWidget(parent)
-    , p2p(new P2PNetwork(this))
+    //, p2p(new P2PNetwork(this))
 {
-    bingoWidget = new BingoWidget(this);
-
+    //bingoWidget = new BingoWidget(this);
+    p2p = new P2PNetwork(this);
     statusLabel = new QLabel("🔄 Waiting for match...", this);
     layout = new QVBoxLayout(this);
     layout->addWidget(statusLabel);
@@ -37,14 +37,15 @@ void MatchingWidget::restartMatching() {
     p2p->startMatching();
 }
 
-// ✅ 매칭이 완료되면 `BingoWidget`으로 이동
+// ✅ 매칭이 완료되면 `MultiGameWidget`으로 이동
 void MatchingWidget::updateMatchStatus(QString peerIP) {
     statusLabel->setText("🎯 Matched with " + peerIP + "!");
-    qDebug() << "🎉 Matched with" << peerIP << ", switching to Bingo screen in 3 seconds...";
+    qDebug() << "DEBUG: 🎉 Matched with" << peerIP << ", switching to Bingo screen in 3 seconds...";
     p2p->isMatchingActive = false;
 
-    // ✅ `BingoWidget` 실행
+    // ✅ `MultiGameWidget` 실행
     QTimer::singleShot(3000, this, [=]() {
+        qDebug() << "DEBUG: Swtching to multi game screen";
         emit switchToBingoScreen();  // ✅ MainWindow에서 Bingo 화면으로 전환
         // ✅ 현재 `MatchingWidget` 닫기
         this->close();

@@ -13,6 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     colorCaptureWidget(nullptr),
     bingoWidget(nullptr),
+    matchingWidget(nullptr),
     multiGameWidget(nullptr)
 {
     // 기본 창 크기 설정
@@ -123,7 +124,11 @@ void MainWindow::setupMainScreen()
     
     // 시그널 연결
     connect(singleGameButton, &QPushButton::clicked, this, &MainWindow::showBingoScreen);
-    connect(multiGameButton, &QPushButton::clicked, this, &MainWindow::showMultiGameScreen);
+    //connect(multiGameButton, &QPushButton::clicked, this, &MainWindow::showMultiGameScreen);
+    connect(multiGameButton, &QPushButton::clicked, this, [=]() {
+        this->showMatchingScreen();
+        matchingWidget->startMatching();
+    });
     connect(exitButton, &QPushButton::clicked, this, &QMainWindow::close);
     
     qDebug() << "setupMainScreen 완료, centerWidget 크기:" << centerWidget->size();
@@ -177,11 +182,24 @@ void MainWindow::showBingoScreen()
     });
 }
 
-//<<<<<<< Updated upstream
+// 매칭 화면 표시 (멀티게임 버튼 클릭 시, 멀티게임 화면 표시 전)
+void MainWindow::showMatchingScreen() {
+    if (!matchingWidget) {
+         qDebug() << "DEBUG: Creating new MatchingWidget";
+         matchingWidget = new MatchingWidget(this);
+         stackedWidget->addWidget(matchingWidget);
+         connect(matchingWidget, &MatchingWidget::switchToBingoScreen, this, &MainWindow::showMultiGameScreen);
+    }
+    qDebug() << "DEBUG: Multi Game button clicked";
+
+    stackedWidget->setCurrentWidget(matchingWidget);
+}
+
+
 // 멀티게임 화면 표시 (새로 추가)
 void MainWindow::showMultiGameScreen()
 {
-    qDebug() << "DEBUG: Multi Game button clicked";
+    qDebug() << "DEBUG: Show Multi Game Screen";
     
     // 현재 colorCaptureWidget이 활성화되어 있다면 카메라 리소스 해제
     if (colorCaptureWidget && stackedWidget->currentWidget() == colorCaptureWidget) {
@@ -263,14 +281,14 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
     // 스택 위젯에 추가 및 현재 위젯으로 설정
 //=======
    // bingoWidget = new BingoWidget(this);
-   // matchingWidget = new MatchingWidget(this);
+
 
    // stackedWidget->addWidget(mainMenu);
-   // stackedWidget->addWidget(matchingWidget);
+
 //>>>>>>> Stashed changes
-   // stackedWidget->addWidget(bingoWidget);
-   // stackedWidget->setCurrentWidget(bingoWidget);
-   // qDebug() << "DEBUG: BingoWidget now displayed";
+    stackedWidget->addWidget(bingoWidget);
+    stackedWidget->setCurrentWidget(bingoWidget);
+    qDebug() << "DEBUG: BingoWidget now displayed";
 }
 
 //<<<<<<< Updated upstream
@@ -334,9 +352,7 @@ void MainWindow::showMainMenu()
 */
 }
 
-//void MainWindow::showMatchingScreen() {
-//    stackedWidget->setCurrentWidget(matchingWidget);
-//}
+
 
 bool MainWindow::event(QEvent *event)
 {

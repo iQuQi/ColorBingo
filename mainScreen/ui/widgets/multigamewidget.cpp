@@ -15,6 +15,11 @@ MultiGameWidget::MultiGameWidget(QWidget *parent) : QWidget(parent),
     selectedCell(-1, -1),
     bingoCount(0)
 {
+    // 네트워크
+    network = new P2PNetwork(this);
+    connect(network, &P2PNetwork::opponentScoreUpdated, this, &MultiGameWidget::updateOpponentScore);
+    connect(network, &P2PNetwork::gameOverReceived, this, &MultiGameWidget::showFailureMessage);
+
     // 메인 레이아웃 생성 (가로 분할)
     mainLayout = new QHBoxLayout(this);
 
@@ -95,6 +100,17 @@ MultiGameWidget::MultiGameWidget(QWidget *parent) : QWidget(parent),
     successTimer = new QTimer(this);
     successTimer->setSingleShot(true);
     connect(successTimer, &QTimer::timeout, this, &MultiGameWidget::hideSuccessAndReset);
+
+    // 실패 메시지 레이블 초기화
+    failureLabel = new QLabel("YOU LOST!", this);
+    failureLabel->setAlignment(Qt::AlignCenter);
+    failureLabel->setStyleSheet("background-color: rgba(255, 255, 255, 120); color: red; font-weight: bold; font-size: 72px;");
+    failureLabel->hide(); // 초기에는 숨김
+
+    // 실패 메시지 타이머 초기화
+    failureTimer = new QTimer(this);
+    failureTimer->setSingleShot(true);
+    connect(failureTimer, &QTimer::timeout, this, &MultiGameWidget::hideFailureAndReset);
 
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);
@@ -834,6 +850,11 @@ void MultiGameWidget::updateBingoScore() {
     // 빙고 점수 표시 업데이트 (영어로 변경)
     bingoScoreLabel->setText(QString("Bingo: %1").arg(bingoCount));
 
+    // 상대 플레이어에 빙고 점수 전송
+    if (network) {
+        network->sendBingoScore(bingoCount);
+    }
+
     // 빙고 완성시 축하 메시지
     if (bingoCount > 0) {
         // 빙고 완성 효과 (배경색 변경 등)
@@ -844,9 +865,16 @@ void MultiGameWidget::updateBingoScore() {
 
     // 3빙고 이상 달성 확인
     if (bingoCount >= 3) {
+        // 상대 플레이어에 결과 전송
+        network->sendGameOverMessage();
         // SUCCESS 메시지 표시
         showSuccessMessage();
     }
+}
+
+// 상대 플레이어의 빙고 점수 업데이트
+void MultiGameWidget::updateOpponentScore(int score) {
+    qDebug() << "DEBUG: 🎯 Opponent's Bingo Score Updated:" << score;
 }
 
 // 새로운 함수 추가: 성공 메시지 표시 및 게임 초기화
@@ -863,6 +891,23 @@ void MultiGameWidget::showSuccessMessage() {
 // 새로운 함수 추가: 성공 메시지 숨기고 게임 초기화
 void MultiGameWidget::hideSuccessAndReset() {
     successLabel->hide();
+    resetGame();
+}
+
+// 실패 메시지 표시 및 게임 초기화
+void MultiGameWidget::showFailureMessage() {
+    // 실패 메시지 레이블 크기 설정 (전체 위젯 크기로)
+    failureLabel->setGeometry(0, 0, width(), height());
+    failureLabel->raise(); // 다른 위젯 위에 표시
+    failureLabel->show();
+
+    // 1초 후 메시지 숨기고 게임 초기화
+    failureTimer->start(1000);
+}
+
+// 실패 메시지 숨기고 게임 초기화
+void MultiGameWidget::hideFailureAndReset() {
+    failureLabel->hide();
     resetGame();
 }
 
@@ -887,6 +932,9 @@ void MultiGameWidget::resetGame() {
 
     // 셀 색상 새로 생성
     generateRandomColors();
+
+    // 네트워크 초기화
+    network->disconnectFromPeer();
 }
 
 // 리사이즈 이벤트 처리 (successLabel 크기 조정)

@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include "p2pnetwork.h"
-#include "bingowidget.h"
+#include "ui/widgets/bingowidget.h"
 
 class MatchingWidget : public QWidget {
     Q_OBJECT
@@ -28,8 +28,6 @@ private slots:
 private:
     QLabel *statusLabel;
     QVBoxLayout *layout;
-
-    BingoWidget *bingoWidget;
 };
 
 #endif // MATCHINGWIDGET_H

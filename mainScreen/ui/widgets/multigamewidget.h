@@ -19,6 +19,7 @@
 #include <QPixmap>
 #include <QShowEvent>
 #include <QHideEvent>
+#include "p2pnetwork.h"
 
 class MultiGameWidget : public QWidget {
     Q_OBJECT
@@ -57,6 +58,9 @@ private slots:
     void showSuccessMessage();
     void hideSuccessAndReset();
     void resetGame();
+    void updateOpponentScore(int score);
+    void showFailureMessage();
+    void hideFailureAndReset();
 
 private:
     // 빙고 관련 함수들
@@ -129,6 +133,10 @@ private:
     QLabel *successLabel;
     QTimer *successTimer;
 
+    // 실패 메시지 관련 멤버
+    QLabel *failureLabel;
+    QTimer *failureTimer;
+
     QPushButton *backButton;
     // 선택된 셀의 RGB 값 표시 위젯 추가
     QLabel *selectedCellRgbLabel;
@@ -138,6 +146,9 @@ private:
     QPixmap bearImage;
 
     QPixmap createXImage(); // X 이미지 생성 함수 추가
+
+    // 네트워크
+    P2PNetwork *network;
 };
 
 #endif // BINGOWIDGET_H
