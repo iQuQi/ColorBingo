@@ -147,7 +147,7 @@ void MainWindow::showBingoScreen()
     }
     
     // 기존 bingoWidget이 있고 카메라가 실행 중이라면 리소스 해제
-    if (bingoWidget && bingoWidget->isCameraCapturing()) {
+    if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
         qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
         V4L2Camera* camera = bingoWidget->getCamera();
         if (camera) {
@@ -184,51 +184,48 @@ void MainWindow::showBingoScreen()
 // 멀티게임 화면 표시 (새로 추가)
 void MainWindow::showMultiGameScreen()
 {
-    qDebug() << "DEBUG: Multi Game button clicked";
-    
-    // 현재 colorCaptureWidget이 활성화되어 있다면 카메라 리소스 해제
-    if (colorCaptureWidget && stackedWidget->currentWidget() == colorCaptureWidget) {
-        qDebug() << "DEBUG: Stopping ColorCaptureWidget camera";
-        colorCaptureWidget->stopCameraCapture();
-        // 카메라 리소스 완전 해제를 위한 대기 시간
+    qDebug() << "DEBUG: Single Game button clicked";
+
+    // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
+    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
+        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
+
+        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
         QThread::msleep(500);
     }
-    
+
     // 기존 bingoWidget이 있고 카메라가 실행 중이라면 리소스 해제
-    if (bingoWidget && bingoWidget->isCameraCapturing()) {
-        qDebug() << "DEBUG: Stopping BingoWidget camera";
-        V4L2Camera* camera = bingoWidget->getCamera();
+    if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
+        qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
+        V4L2Camera* camera = multiGameWidget->getCamera();
         if (camera) {
             camera->stopCapturing();
             camera->closeCamera();
             qDebug() << "DEBUG: BingoWidget camera explicitly stopped";
         }
-        
-        // 카메라 리소스 해제를 위한 대기 시간
+
+        // 카메라 리소스 완전 해제를 위한 대기 시간
         QThread::msleep(500);
     }
-    
-    if (!multiGameWidget) {
-        qDebug() << "DEBUG: Creating new MultiGameWidget";
-        multiGameWidget = new MultiGameWidget(this);
-        connect(multiGameWidget, &MultiGameWidget::backToMainRequested, 
+
+    if (!colorCaptureWidget) {
+        qDebug() << "DEBUG: Creating new ColorCaptureWidget";
+        colorCaptureWidget = new ColorCaptureWidget(this);
+        connect(colorCaptureWidget, &ColorCaptureWidget::createMultiGameRequested,
+                this, &MainWindow::onCreateMultiGameRequested);
+        connect(colorCaptureWidget, &ColorCaptureWidget::backToMainRequested,
                 this, &MainWindow::showMainMenu);
-        
+
         // 스택 위젯에 추가
-        stackedWidget->addWidget(multiGameWidget);
-    } else if (multiGameWidget->isCameraCapturing()) {
-        // 기존 MultiGameWidget이 있고 카메라가 실행 중이라면 정지
-        qDebug() << "DEBUG: Stopping existing MultiGameWidget camera";
-        multiGameWidget->stopCamera();
-        QThread::msleep(500);
+        stackedWidget->addWidget(colorCaptureWidget);
     }
-    
-    // 현재 위젯을 멀티게임 위젯으로 변경
-    stackedWidget->setCurrentWidget(multiGameWidget);
-    
+
+    // 현재 위젯을 색상 캡처 위젯으로 변경
+    stackedWidget->setCurrentWidget(colorCaptureWidget);
+
     // 리소스가 완전히 초기화될 시간을 주기 위해 짧은 지연 추가
     QTimer::singleShot(500, this, [this]() {
-        qDebug() << "DEBUG: MultiGameWidget now displayed";
+        qDebug() << "DEBUG: ColorCaptureWidget now displayed";
     });
 }
 
@@ -254,19 +251,72 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
         delete bingoWidget;
         bingoWidget = nullptr;
     }
+
+    if (multiGameWidget) {
+        qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
+        disconnect(multiGameWidget); // 시그널 연결 해제
+        stackedWidget->removeWidget(multiGameWidget);
+        delete multiGameWidget;
+        multiGameWidget = nullptr;
+    }
     
     // BingoWidget 생성
     qDebug() << "DEBUG: Creating BingoWidget";
     bingoWidget = new BingoWidget(this, colors);
     
     // 시그널 연결
-    connect(bingoWidget, &BingoWidget::backToMainRequested, 
+    connect(bingoWidget, &BingoWidget::backToMainRequested,
             this, &MainWindow::showMainMenu, Qt::QueuedConnection);
     
     // 스택 위젯에 추가 및 현재 위젯으로 설정
     stackedWidget->addWidget(bingoWidget);
     stackedWidget->setCurrentWidget(bingoWidget);
     qDebug() << "DEBUG: BingoWidget now displayed";
+}
+
+void MainWindow::onCreateMultiGameRequested(const QList<QColor> &colors)
+{
+    qDebug() << "DEBUG: Create Multi Game requested with" << colors.size() << "colors";
+
+    // 카메라 리소스 해제 - 완전히 닫기
+    if (colorCaptureWidget) {
+        qDebug() << "DEBUG: Stopping camera before creating MultiGameWidget";
+        colorCaptureWidget->stopCameraCapture();
+
+        // 카메라 자원 해제를 위한 대기 시간
+        qDebug() << "DEBUG: Waiting for camera resources to be fully released";
+        QThread::msleep(1500); // 1.5초 대기
+    }
+
+    // 기존 bingoWidget이 있다면 안전하게 정리
+    if (bingoWidget) {
+        qDebug() << "DEBUG: Cleaning up previous BingoWidget";
+        disconnect(bingoWidget); // 시그널 연결 해제
+        stackedWidget->removeWidget(bingoWidget);
+        delete bingoWidget;
+        bingoWidget = nullptr;
+    }
+
+    if (multiGameWidget) {
+        qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
+        disconnect(multiGameWidget); // 시그널 연결 해제
+        stackedWidget->removeWidget(multiGameWidget);
+        delete multiGameWidget;
+        multiGameWidget = nullptr;
+    }
+
+    // BingoWidget 생성
+    qDebug() << "DEBUG: Creating MultiGameWidget";
+    multiGameWidget = new MultiGameWidget(this, colors);
+
+    // 시그널 연결
+    connect(multiGameWidget, &MultiGameWidget::backToMainRequested,
+            this, &MainWindow::showMainMenu, Qt::QueuedConnection);
+
+    // 스택 위젯에 추가 및 현재 위젯으로 설정
+    stackedWidget->addWidget(multiGameWidget);
+    stackedWidget->setCurrentWidget(multiGameWidget);
+    qDebug() << "DEBUG: MultiGameWidget now displayed";
 }
 
 // 메인 메뉴 표시 (이전의 onBingoBackRequested)
@@ -293,7 +343,11 @@ void MainWindow::showMainMenu()
     
     if (multiGameWidget && multiGameWidget->isCameraCapturing()) {
         qDebug() << "DEBUG: Stopping MultiGameWidget camera before returning to main menu";
-        multiGameWidget->stopCamera();
+        V4L2Camera* camera = multiGameWidget->getCamera();
+        if (camera) {
+            camera->stopCapturing();
+            camera->closeCamera();
+        }
         QThread::msleep(500);
     }
     
