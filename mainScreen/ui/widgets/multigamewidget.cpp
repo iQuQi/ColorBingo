@@ -1027,6 +1027,7 @@ void MultiGameWidget::updateBingoScore() {
 
     // 상대 플레이어에 빙고 점수 전송
     if (network) {
+        qDebug() << "DEBUG: sending bingo score";
         network->sendBingoScore(bingoCount);
     }
 

@@ -7,7 +7,7 @@
 *****************************************************************************/
 
 #include <memory>
-#include "../mainScreen/bingowidget.h"
+#include "../mainScreen/ui/widgets/bingowidget.h"
 #include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_BingoWidget_t {
-    QByteArrayData data[17];
-    char stringdata0[277];
+    QByteArrayData data[23];
+    char stringdata0[376];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -39,26 +39,35 @@ QT_MOC_LITERAL(3, 33, 17), // "updateCameraFrame"
 QT_MOC_LITERAL(4, 51, 22), // "handleCameraDisconnect"
 QT_MOC_LITERAL(5, 74, 26), // "onCircleSliderValueChanged"
 QT_MOC_LITERAL(6, 101, 5), // "value"
-QT_MOC_LITERAL(7, 107, 23), // "onCircleCheckBoxToggled"
-QT_MOC_LITERAL(8, 131, 7), // "checked"
-QT_MOC_LITERAL(9, 139, 20), // "onRgbCheckBoxToggled"
-QT_MOC_LITERAL(10, 160, 10), // "clearXMark"
-QT_MOC_LITERAL(11, 171, 18), // "showSuccessMessage"
-QT_MOC_LITERAL(12, 190, 19), // "hideSuccessAndReset"
-QT_MOC_LITERAL(13, 210, 9), // "resetGame"
-QT_MOC_LITERAL(14, 220, 13), // "restartCamera"
-QT_MOC_LITERAL(15, 234, 19), // "onBackButtonClicked"
-QT_MOC_LITERAL(16, 254, 22) // "onRestartButtonClicked"
+QT_MOC_LITERAL(7, 107, 22), // "onCaptureButtonClicked"
+QT_MOC_LITERAL(8, 130, 10), // "clearXMark"
+QT_MOC_LITERAL(9, 141, 18), // "showSuccessMessage"
+QT_MOC_LITERAL(10, 160, 19), // "hideSuccessAndReset"
+QT_MOC_LITERAL(11, 180, 9), // "resetGame"
+QT_MOC_LITERAL(12, 190, 22), // "onRestartButtonClicked"
+QT_MOC_LITERAL(13, 213, 11), // "onTimerTick"
+QT_MOC_LITERAL(14, 225, 18), // "updateTimerDisplay"
+QT_MOC_LITERAL(15, 244, 19), // "updateTimerPosition"
+QT_MOC_LITERAL(16, 264, 14), // "startGameTimer"
+QT_MOC_LITERAL(17, 279, 13), // "stopGameTimer"
+QT_MOC_LITERAL(18, 293, 15), // "showFailMessage"
+QT_MOC_LITERAL(19, 309, 16), // "hideFailAndReset"
+QT_MOC_LITERAL(20, 326, 13), // "restartCamera"
+QT_MOC_LITERAL(21, 340, 19), // "onBackButtonClicked"
+QT_MOC_LITERAL(22, 360, 15) // "updateRgbValues"
 
     },
     "BingoWidget\0backToMainRequested\0\0"
     "updateCameraFrame\0handleCameraDisconnect\0"
     "onCircleSliderValueChanged\0value\0"
-    "onCircleCheckBoxToggled\0checked\0"
-    "onRgbCheckBoxToggled\0clearXMark\0"
+    "onCaptureButtonClicked\0clearXMark\0"
     "showSuccessMessage\0hideSuccessAndReset\0"
-    "resetGame\0restartCamera\0onBackButtonClicked\0"
-    "onRestartButtonClicked"
+    "resetGame\0onRestartButtonClicked\0"
+    "onTimerTick\0updateTimerDisplay\0"
+    "updateTimerPosition\0startGameTimer\0"
+    "stopGameTimer\0showFailMessage\0"
+    "hideFailAndReset\0restartCamera\0"
+    "onBackButtonClicked\0updateRgbValues"
 };
 #undef QT_MOC_LITERAL
 
@@ -68,7 +77,7 @@ static const uint qt_meta_data_BingoWidget[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      13,   14, // methods
+      20,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -76,21 +85,28 @@ static const uint qt_meta_data_BingoWidget[] = {
        1,       // signalCount
 
  // signals: name, argc, parameters, tag, flags
-       1,    0,   79,    2, 0x06 /* Public */,
+       1,    0,  114,    2, 0x06 /* Public */,
 
  // slots: name, argc, parameters, tag, flags
-       3,    0,   80,    2, 0x08 /* Private */,
-       4,    0,   81,    2, 0x08 /* Private */,
-       5,    1,   82,    2, 0x08 /* Private */,
-       7,    1,   85,    2, 0x08 /* Private */,
-       9,    1,   88,    2, 0x08 /* Private */,
-      10,    0,   91,    2, 0x08 /* Private */,
-      11,    0,   92,    2, 0x08 /* Private */,
-      12,    0,   93,    2, 0x08 /* Private */,
-      13,    0,   94,    2, 0x08 /* Private */,
-      14,    0,   95,    2, 0x08 /* Private */,
-      15,    0,   96,    2, 0x08 /* Private */,
-      16,    0,   97,    2, 0x08 /* Private */,
+       3,    0,  115,    2, 0x08 /* Private */,
+       4,    0,  116,    2, 0x08 /* Private */,
+       5,    1,  117,    2, 0x08 /* Private */,
+       7,    0,  120,    2, 0x08 /* Private */,
+       8,    0,  121,    2, 0x08 /* Private */,
+       9,    0,  122,    2, 0x08 /* Private */,
+      10,    0,  123,    2, 0x08 /* Private */,
+      11,    0,  124,    2, 0x08 /* Private */,
+      12,    0,  125,    2, 0x08 /* Private */,
+      13,    0,  126,    2, 0x08 /* Private */,
+      14,    0,  127,    2, 0x08 /* Private */,
+      15,    0,  128,    2, 0x08 /* Private */,
+      16,    0,  129,    2, 0x08 /* Private */,
+      17,    0,  130,    2, 0x08 /* Private */,
+      18,    0,  131,    2, 0x08 /* Private */,
+      19,    0,  132,    2, 0x08 /* Private */,
+      20,    0,  133,    2, 0x08 /* Private */,
+      21,    0,  134,    2, 0x08 /* Private */,
+      22,    0,  135,    2, 0x08 /* Private */,
 
  // signals: parameters
     QMetaType::Void,
@@ -99,8 +115,15 @@ static const uint qt_meta_data_BingoWidget[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void, QMetaType::Int,    6,
-    QMetaType::Void, QMetaType::Bool,    8,
-    QMetaType::Void, QMetaType::Bool,    8,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
@@ -122,15 +145,22 @@ void BingoWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id,
         case 1: _t->updateCameraFrame(); break;
         case 2: _t->handleCameraDisconnect(); break;
         case 3: _t->onCircleSliderValueChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 4: _t->onCircleCheckBoxToggled((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 5: _t->onRgbCheckBoxToggled((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 6: _t->clearXMark(); break;
-        case 7: _t->showSuccessMessage(); break;
-        case 8: _t->hideSuccessAndReset(); break;
-        case 9: _t->resetGame(); break;
-        case 10: _t->restartCamera(); break;
-        case 11: _t->onBackButtonClicked(); break;
-        case 12: _t->onRestartButtonClicked(); break;
+        case 4: _t->onCaptureButtonClicked(); break;
+        case 5: _t->clearXMark(); break;
+        case 6: _t->showSuccessMessage(); break;
+        case 7: _t->hideSuccessAndReset(); break;
+        case 8: _t->resetGame(); break;
+        case 9: _t->onRestartButtonClicked(); break;
+        case 10: _t->onTimerTick(); break;
+        case 11: _t->updateTimerDisplay(); break;
+        case 12: _t->updateTimerPosition(); break;
+        case 13: _t->startGameTimer(); break;
+        case 14: _t->stopGameTimer(); break;
+        case 15: _t->showFailMessage(); break;
+        case 16: _t->hideFailAndReset(); break;
+        case 17: _t->restartCamera(); break;
+        case 18: _t->onBackButtonClicked(); break;
+        case 19: _t->updateRgbValues(); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
@@ -174,13 +204,13 @@ int BingoWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 20)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 20;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 13)
+        if (_id < 20)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 13;
+        _id -= 20;
     }
     return _id;
 }

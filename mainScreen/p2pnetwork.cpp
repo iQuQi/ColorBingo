@@ -15,7 +15,7 @@ P2PNetwork::P2PNetwork(QObject *parent) : QObject(parent), isMatched(false), isM
 
     clientSocket = new QTcpSocket(this);
     connect(clientSocket, &QTcpSocket::connected, this, &P2PNetwork::onClientConnected);
-    //connect(clientSocket, &QTcpSocket::readyRead, this, &P2PNetwork::onDataReceived);
+    connect(clientSocket, &QTcpSocket::readyRead, this, &P2PNetwork::onDataReceived);
 
     matchTimer = new QTimer(this);
     connect(matchTimer, &QTimer::timeout, this, &P2PNetwork::sendMatchRequest);
@@ -153,13 +153,17 @@ void P2PNetwork::disconnectFromPeer() {
 
 // 상대보드에 점수 전송
 void P2PNetwork::sendBingoScore(int score) {
+    QString message = QString("SCORE_UPDATE:%1").arg(score);
+
+    qDebug() << "DEBUG: Checking clientSocket & connectedClient before sending score";
+    qDebug() << "DEBUG: clientSocket is " << (clientSocket ? "NOT NULL" : "NULL");
+    qDebug() << "DEBUG: connectedClient is " << (connectedClient ? "NOT NULL" : "NULL");
+
     if (clientSocket->state() == QAbstractSocket::ConnectedState) {
-        QString message = QString("SCORE_UPDATE:%1").arg(score);
         clientSocket->write(message.toUtf8() + "\n");
         clientSocket->flush();
         qDebug() << "DEBUG: 📤 Sent score update to opponent:" << score;
     } else if (connectedClient) {
-        QString message = QString("SCORE_UPDATE:%1").arg(score);
         connectedClient->write(message.toUtf8() + "\n");
         connectedClient->flush();
         qDebug() << "DEBUG: 📤 Sent score update to opponent:" << score;
