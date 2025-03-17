@@ -25,7 +25,8 @@ SoundManager::SoundManager() :
     effectVolume(1.0f),
     backgroundPcm(nullptr),
     effectPcm(nullptr),
-    isBackgroundPlaying(false)
+    isBackgroundPlaying(false),
+    dumpMode(false)  // 덤프 모드 초기화
 {
     qDebug() << "DEBUG: SoundManager initialization started...";
     
@@ -103,74 +104,50 @@ SoundManager::SoundManager() :
     soundFilePath[INCORRECT_SOUND] = ":/music/incorrect_sound.wav";
     soundFilePath[SUCCESS_SOUND] = ":/music/success_sound.wav";
     soundFilePath[FAIL_SOUND] = ":/music/fail_sound.wav";
+    soundFilePath[DUMMY_SOUND] = "";  // 더미 사운드는 빈 문자열
     
-    // PCM 디바이스 열기 - 라즈베리파이 헤드폰 직접 지정
+    // PCM 디바이스 열기 시도
+    bool pcmInitSuccess = false;
+    
+    // 배경음악용 PCM 초기화
     if (!openPcm(&backgroundPcm, "hw:0,0")) {
         qDebug() << "ERROR: Failed to open hw:0,0, trying alternative device";
         if (!openPcm(&backgroundPcm, "default")) {
             qDebug() << "ERROR: Failed to open default device as well";
+            // 모든 PCM 디바이스 초기화 실패
+            pcmInitSuccess = false;
+        } else {
+            pcmInitSuccess = true;
         }
+    } else {
+        pcmInitSuccess = true;
     }
     
+    // 효과음용 PCM 초기화
     if (!openPcm(&effectPcm, "hw:0,0")) {
         qDebug() << "ERROR: Failed to open effect device hw:0,0";
         if (!openPcm(&effectPcm, "default")) {
             qDebug() << "ERROR: Failed to open default device for effects";
+            // 효과음 PCM 초기화 실패, 성공 플래그 업데이트
+            pcmInitSuccess = false;
         }
     }
     
-    // 볼륨 설정 테스트
-    qDebug() << "DEBUG: Testing mixer settings...";
-    
-    // ALSA 믹서 테스트
-    snd_mixer_t *mixer = nullptr;
-    int err = snd_mixer_open(&mixer, 0);
-    if (err < 0) {
-        qDebug() << "ERROR: Cannot open mixer:" << snd_strerror(err);
-    } else {
-        err = snd_mixer_attach(mixer, "default");
-        if (err < 0) {
-            qDebug() << "ERROR: Cannot attach mixer to default device:" << snd_strerror(err);
-        } else {
-            err = snd_mixer_selem_register(mixer, NULL, NULL);
-            if (err < 0) {
-                qDebug() << "ERROR: Cannot register mixer elements:" << snd_strerror(err);
-            } else {
-                err = snd_mixer_load(mixer);
-                if (err < 0) {
-                    qDebug() << "ERROR: Cannot load mixer elements:" << snd_strerror(err);
-                } else {
-                    qDebug() << "DEBUG: Mixer successfully loaded";
-                    
-                    // 사용 가능한 모든 믹서 요소 출력
-                    qDebug() << "DEBUG: Available mixer controls:";
-                    snd_mixer_elem_t *elem = snd_mixer_first_elem(mixer);
-                    while (elem) {
-                        if (snd_mixer_elem_get_type(elem) == SND_MIXER_ELEM_SIMPLE) {
-                            const char *name = snd_mixer_selem_get_name(elem);
-                            qDebug() << "  -" << name;
-                            
-                            // 볼륨 설정 시도
-                            if (snd_mixer_selem_has_playback_volume(elem)) {
-                                long min, max;
-                                snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-                                qDebug() << "    * Volume range:" << min << "to" << max;
-                                
-                                // 볼륨을 최대로 설정
-                                err = snd_mixer_selem_set_playback_volume_all(elem, max);
-                                if (err < 0) {
-                                    qDebug() << "    * ERROR: Cannot set volume:" << snd_strerror(err);
-                                } else {
-                                    qDebug() << "    * Volume set to maximum";
-                                }
-                            }
-                        }
-                        elem = snd_mixer_elem_next(elem);
-                    }
-                }
-            }
+    // PCM 초기화 실패시 덤프 모드 활성화
+    if (!pcmInitSuccess || !backgroundPcm || !effectPcm) {
+        qDebug() << "WARNING: PCM initialization failed - activating dump mode";
+        dumpMode = true;
+        
+        // NULL 포인터 정리
+        if (backgroundPcm) {
+            snd_pcm_close(backgroundPcm);
+            backgroundPcm = nullptr;
         }
-        snd_mixer_close(mixer);
+        
+        if (effectPcm) {
+            snd_pcm_close(effectPcm);
+            effectPcm = nullptr;
+        }
     }
     
     // PCM 장치 정보 출력
@@ -204,7 +181,7 @@ SoundManager::SoundManager() :
         qDebug() << "ERROR: Cannot get device list";
     }
     
-    qDebug() << "DEBUG: SoundManager initialization completed";
+    qDebug() << "DEBUG: SoundManager initialization completed" << (dumpMode ? "(DUMP MODE ACTIVE)" : "");
     
     setBackgroundVolume(backgroundVolume);
 }
@@ -248,12 +225,26 @@ bool SoundManager::openPcm(snd_pcm_t **pcm, const char *device)
         if ((err = snd_pcm_open(pcm, "default", SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
             qDebug() << "Cannot open default PCM device: " << snd_strerror(err);
             
-            // 마지막으로 제공된 장치 시도
-            if ((err = snd_pcm_open(pcm, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
-                qDebug() << "Cannot open provided PCM device: " << snd_strerror(err);
-                return false;
+            // 추가 장치 시도 (플러스 호환성)
+            if ((err = snd_pcm_open(pcm, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+                qDebug() << "Cannot open plughw:0,0 device: " << snd_strerror(err);
+            
+                // 마지막으로 제공된 장치 시도
+                if ((err = snd_pcm_open(pcm, device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
+                    qDebug() << "Cannot open provided PCM device: " << snd_strerror(err);
+                    
+                    // 모든 시도 실패시 null로 설정하고 실패 반환
+                    *pcm = nullptr;
+                    return false;
+                }
             }
         }
+    }
+    
+    // PCM이 성공적으로 열렸는지 확인 (방어적 코딩)
+    if (!(*pcm)) {
+        qDebug() << "ERROR: PCM device pointer is NULL after successful open!";
+        return false;
     }
     
     // 성공적으로 열렸으면 PCM 설정 최적화
@@ -272,6 +263,11 @@ bool SoundManager::openPcm(snd_pcm_t **pcm, const char *device)
 
 void SoundManager::playBackgroundMusic()
 {
+    if (dumpMode) {
+        qDebug() << "WARNING: playBackgroundMusic called in dump mode - ignoring";
+        return;
+    }
+    
     if (isBackgroundPlaying) {
         qDebug() << "Background music is already playing";
         return;
@@ -286,6 +282,11 @@ void SoundManager::playBackgroundMusic()
 
 void SoundManager::stopBackgroundMusic()
 {
+    if (dumpMode) {
+        qDebug() << "WARNING: stopBackgroundMusic called in dump mode - ignoring";
+        return;
+    }
+    
     if (!isBackgroundPlaying) {
         qDebug() << "Background music is not currently playing";
         return;
@@ -303,6 +304,12 @@ void* SoundManager::backgroundThreadFunc(void *arg)
 {
     SoundManager *soundManager = static_cast<SoundManager*>(arg);
     
+    // 덤프 모드인 경우 즉시 종료
+    if (soundManager->dumpMode) {
+        qDebug() << "WARNING: backgroundThreadFunc called in dump mode - terminating thread";
+        return nullptr;
+    }
+    
     // PCM 디바이스가 열려있지 않으면 그대로 종료
     if (!soundManager->backgroundPcm) {
         qDebug() << "ERROR: Background PCM device is not open";
@@ -318,6 +325,22 @@ void* SoundManager::backgroundThreadFunc(void *arg)
 
 void SoundManager::playEffect(SoundEffect effect)
 {
+    // 더미 사운드는 무시
+    if (effect == DUMMY_SOUND) {
+        qDebug() << "DUMMY_SOUND requested - ignoring";
+        return;
+    }
+    
+    // 덤프 모드면 로그만 기록하고 즉시 리턴
+    if (dumpMode) {
+        qDebug() << "WARNING: playEffect called in dump mode - sound: " 
+                 << (effect == CORRECT_SOUND ? "CORRECT_SOUND" :
+                     effect == INCORRECT_SOUND ? "INCORRECT_SOUND" :
+                     effect == SUCCESS_SOUND ? "SUCCESS_SOUND" :
+                     effect == FAIL_SOUND ? "FAIL_SOUND" : "UNKNOWN");
+        return;
+    }
+    
     // 효과음 파일 경로 가져오기
     QString filePath = soundFilePath[effect];
     
@@ -329,6 +352,13 @@ void SoundManager::playEffect(SoundEffect effect)
         snd_pcm_t *tempPcm = nullptr;
         if (!openPcm(&tempPcm, "hw:0,0")) {
             qDebug() << "ERROR: Failed to open temporary PCM device for effect";
+            // PCM 장치를 열지 못하면, 소리 없이 계속 진행
+            return;
+        }
+        
+        // PCM 장치가 NULL인지 확인하고 로그 남기기 (추가 보호 조치)
+        if (!tempPcm) {
+            qDebug() << "ERROR: tempPcm is NULL even after successful openPcm!";
             return;
         }
         
@@ -344,8 +374,10 @@ void SoundManager::playEffect(SoundEffect effect)
         qDebug() << "Sound effect playback completed";
         
         // 사용 후 PCM 핸들 닫기
-        snd_pcm_drain(tempPcm);
-        snd_pcm_close(tempPcm);
+        if (tempPcm) {
+            snd_pcm_drain(tempPcm);
+            snd_pcm_close(tempPcm);
+        }
     });
     
     thread->start();
@@ -503,6 +535,12 @@ void SoundManager::playWavFile(snd_pcm_t *pcm, const QString &filename, bool loo
     QFile file;
     QString actualFilename = filename;
     QTemporaryFile *tempFile = nullptr;
+    
+    // 파일 오류시 조기 복귀 (방어적 코딩 추가)
+    if (actualFilename.isEmpty()) {
+        qDebug() << "ERROR: Empty filename provided to playWavFile";
+        return;
+    }
     
     // 리소스 파일인 경우 임시 파일에 복사
     if (filename.startsWith(":/")) {

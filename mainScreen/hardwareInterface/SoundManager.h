@@ -28,7 +28,8 @@ public:
         CORRECT_SOUND,
         INCORRECT_SOUND,
         SUCCESS_SOUND,
-        FAIL_SOUND
+        FAIL_SOUND,
+        DUMMY_SOUND
     };
 
     // 싱글톤 인스턴스 가져오기
@@ -48,6 +49,9 @@ public:
     // 리소스 정리
     void cleanup();
 
+    // 추가: 덤프 모드 상태 확인
+    bool isDumpMode() const { return dumpMode; }
+
 private:
     SoundManager();
     ~SoundManager();
@@ -66,6 +70,9 @@ private:
     // 배경음악 스레드
     pthread_t backgroundThread;
     std::atomic<bool> isBackgroundPlaying;
+    
+    // 덤프 모드 플래그 (오디오 초기화 실패 시 활성화)
+    bool dumpMode;
     
     // WAV 파일 재생 함수
     bool openPcm(snd_pcm_t **pcm, const char *device);
