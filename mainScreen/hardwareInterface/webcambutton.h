@@ -19,7 +19,7 @@ public:
     ~ButtonReaderThread();
     
     // 스레드 시작 전 초기화
-    bool initialize(const QString &devicePath);
+    bool initialize();
     void stopReading();
 
 signals:
@@ -31,6 +31,9 @@ protected:
     void run() override;
     
 private:
+    // 웹캠 버튼 디바이스 파일 경로 찾기
+    QString findWebcamButtonDevice();
+    
     QString devicePath;
     bool stopRequested;
     QMutex mutex;
@@ -45,7 +48,7 @@ public:
     ~WebcamButton();
 
     // 물리 버튼 초기화 함수
-    bool initialize(const QString &devicePath = "/dev/input/event1");
+    bool initialize();
     
     // 입력 장치가 열려있는지 확인
     bool isInitialized() const;

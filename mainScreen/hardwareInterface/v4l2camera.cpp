@@ -108,8 +108,8 @@ void V4L2Camera::initDevice()
     // Set video format
     CLEAR(fmt);
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width = 1600;
-    fmt.fmt.pix.height = 1200;
+    fmt.fmt.pix.width = 800;
+    fmt.fmt.pix.height = 600;
     fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
     fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
 

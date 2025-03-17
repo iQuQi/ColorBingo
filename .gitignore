@@ -8,3 +8,4 @@ build-mainScreen/**
 
 # cursorignore 파일
 .cursorignore
+mainScreen/mainScreen.pro.user

@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "hardwareInterface/SoundManager.h"
 #include "ui/widgets/colorcapturewidget.h"
+#include "background.h"  // 내장된 배경 리소스 포함
 #include <QDebug>
 #include <QThread>
 #include <QRandomGenerator>
@@ -14,6 +15,10 @@
 #include <QIcon>
 #include <QPolygon>
 #include <QPen>
+#include <QGraphicsDropShadowEffect>
+#include <QDir>
+#include <QFileInfo>
+#include <QImageReader>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -21,7 +26,8 @@ MainWindow::MainWindow(QWidget *parent) :
     bingoWidget(nullptr),
     matchingWidget(nullptr),
     multiGameWidget(nullptr),
-    volumeLevel(2) // Default volume level is 2 (medium)
+    volumeLevel(2), // Default volume level is 2 (medium)
+    backgroundImage() // 배경 이미지 초기화 추가
 {
     // Set default window size
     resize(800, 600);
@@ -76,6 +82,18 @@ MainWindow::MainWindow(QWidget *parent) :
     updateVolumeButton();
     // Set initial volume button position
     updateVolumeButtonPosition();
+    
+    // 디버깅 - 작업 디렉토리 확인
+    qDebug() << "Working directory:" << QDir::currentPath();
+    
+    // Qt 리소스 시스템에서 내장된 배경 이미지 로드
+    backgroundImage = BackgroundResource::getBackgroundImage();
+    qDebug() << "Loaded embedded background image:" << !backgroundImage.isNull();
+    if (!backgroundImage.isNull()) {
+        qDebug() << "Background image size:" << backgroundImage.width() << "x" << backgroundImage.height();
+    } else {
+        qDebug() << "Failed to load background image from resources. Check resources.qrc file.";
+    }
     
     qDebug() << "MainWindow creation completed, mainMenu size:" << mainMenu->size();
     qDebug() << "stackedWidget size:" << stackedWidget->size();
@@ -155,13 +173,20 @@ void MainWindow::setupMainScreen()
     QVBoxLayout *mainLayout = new QVBoxLayout(mainMenu);
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
-    // Set background style
-    mainMenu->setStyleSheet("QWidget { background-color: #f5f5f5; }");
+    // Set background style - 배경 제거하고 투명하게 설정
+    mainMenu->setStyleSheet("QWidget { background-color: transparent; }");
     
     // Create central container for content
     centerWidget = new QWidget(mainMenu);
     centerWidget->setStyleSheet("QWidget { background-color: #ffffff; border-radius: 10px; }");
     centerWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    
+    // 그림자 효과 추가
+    QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(15);
+    shadow->setColor(QColor(0, 0, 0, 80));
+    shadow->setOffset(0, 0);
+    centerWidget->setGraphicsEffect(shadow);
     
     QVBoxLayout *centerLayout = new QVBoxLayout(centerWidget);
     centerLayout->setSpacing(20);
@@ -747,6 +772,36 @@ QPixmap MainWindow::createVolumeImage(int volumeLevel)
     }
     
     return volumeImage;
+}
+
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    // 메인 메뉴 화면일 때만 배경 이미지 그리기
+    if (stackedWidget->currentWidget() == mainMenu) {
+        QPainter painter(this);
+        
+        // 배경 이미지 그리기
+        if (!backgroundImage.isNull()) {
+            // 이미지를 화면 전체 크기에 맞게 확장하여 그리기
+            QPixmap scaledBg = backgroundImage.scaled(width(), height(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+            
+            // 이미지가 화면보다 크면 중앙 부분을 표시
+            if (scaledBg.width() > width() || scaledBg.height() > height()) {
+                int x = (scaledBg.width() - width()) / 2;
+                int y = (scaledBg.height() - height()) / 2;
+                painter.drawPixmap(0, 0, scaledBg, x, y, width(), height());
+            } else {
+                // 이미지가 화면보다 작으면 그냥 표시
+                painter.drawPixmap(0, 0, scaledBg);
+            }
+        } else {
+            // 이미지가 없는 경우 하늘색 배경
+            painter.fillRect(rect(), QColor(135, 206, 235));
+        }
+    }
+    
+    // 부모 클래스의 paintEvent 호출
+    QMainWindow::paintEvent(event);
 }
 
 MainWindow::~MainWindow()

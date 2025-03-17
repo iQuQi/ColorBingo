@@ -224,6 +224,16 @@ void ColorCaptureWidget::resizeEvent(QResizeEvent* event)
 
 void ColorCaptureWidget::handleCameraDisconnect()
 {
+    static bool isTransitioning = false;
+    
+    // 이미 전환 중이면 무시
+    if (isTransitioning) {
+        qDebug() << "DEBUG: Screen transition already in progress, ignoring";
+        return;
+    }
+    
+    isTransitioning = true;
+    
     qDebug() << "DEBUG: Camera disconnected";
     
     if (cameraView) {
@@ -236,8 +246,14 @@ void ColorCaptureWidget::handleCameraDisconnect()
     QMessageBox::warning(this, "Camera Error", 
                          "Camera has been disconnected. Returning to main screen.");
     
+    qDebug() << "DEBUG: Emitting backToMainRequested signal from handleCameraDisconnect";
     // 메인 화면으로 돌아가기
     emit backToMainRequested();
+    
+    // 전환 상태 재설정 (딜레이 후 리셋)
+    QTimer::singleShot(500, []() { 
+        isTransitioning = false; 
+    });
 }
 
 void ColorCaptureWidget::onCreateBingoClicked() 
@@ -270,9 +286,26 @@ void ColorCaptureWidget::onCreateMultiGameClicked()
 
 void ColorCaptureWidget::onBackButtonClicked() 
 {
+    static bool isTransitioning = false;
+    
+    // 이미 전환 중이면 무시
+    if (isTransitioning) {
+        qDebug() << "DEBUG: Screen transition already in progress, ignoring";
+        return;
+    }
+    
+    isTransitioning = true;
+    
     qDebug() << "DEBUG: Back button clicked";
     stopCameraCapture();
+    
+    qDebug() << "DEBUG: Emitting backToMainRequested signal from ColorCaptureWidget";
     emit backToMainRequested();
+    
+    // 전환 상태 재설정 (딜레이 후 리셋)
+    QTimer::singleShot(500, []() { 
+        isTransitioning = false; 
+    });
 }
 
 // 소멸자
