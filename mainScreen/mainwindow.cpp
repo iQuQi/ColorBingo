@@ -287,15 +287,16 @@ void MainWindow::showBingoScreen()
 {
     qDebug() << "DEBUG: Single Game button clicked";
     
-    // Release camera resources if MultiGameWidget is currently active
-    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
-        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
+    // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
+//    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
+//        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
         
-        // Explicit handling for complete camera resource release (temporary wait)
-        QThread::msleep(500);
-    }
+//        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
+//        QThread::msleep(500);
+//    }
     
-    // Release resources if existing bingoWidget has an active camera
+    // 기존 bingoWidget이 있고 카메라가 실행 중이라면 리소스 해제
+//    if (bingoWidget && bingoWidget->isCameraCapturing()) {
     if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
         qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
         V4L2Camera* camera = bingoWidget->getCamera();
@@ -342,15 +343,16 @@ void MainWindow::showMultiGameScreen()
 {
     qDebug() << "DEBUG: Multi Game button clicked";
 
-    // Release camera resources if MultiGameWidget is currently active
-    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
-        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
+    // 현재 멀티게임 위젯이 활성화되어 있다면 카메라 리소스 해제
+//    if (multiGameWidget && stackedWidget->currentWidget() == multiGameWidget) {
+//        qDebug() << "DEBUG: Ensuring MultiGameWidget camera is stopped";
 
-        // Explicit handling for complete camera resource release (temporary wait)
-        QThread::msleep(500);
-    }
+//        // 카메라 리소스 완전 해제를 위한 명시적 처리 (임시 대기)
+//        QThread::msleep(500);
+//    }
 
-    // Release resources if existing bingoWidget has an active camera
+    // 기존 multiGameWidget이 있고 카메라가 실행 중이라면 리소스 해제
+//    if (multiGameWidget && multiGameWidget->isCameraCapturing()) {
     if ((bingoWidget && bingoWidget->isCameraCapturing()) || (multiGameWidget && multiGameWidget->isCameraCapturing())) {
         qDebug() << "DEBUG: Ensuring BingoWidget camera is stopped";
         V4L2Camera* camera = multiGameWidget->getCamera();
