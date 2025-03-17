@@ -11,8 +11,8 @@
 class P2PNetwork : public QObject {
     Q_OBJECT
 public:
-    explicit P2PNetwork(QObject *parent = nullptr);
 
+    static P2PNetwork *getInstance();
     void startMatching();
     void disconnectFromPeer();
     void sendBingoScore(int score);
@@ -33,8 +33,14 @@ private slots:
     void onClientConnected();
     void onDataReceived();
     void sendMatchRequest();
+    void onDisconnected();
+    void onSocketError(QAbstractSocket::SocketError socketError);
 
 private:
+    explicit P2PNetwork(QObject *parent = nullptr);
+    static P2PNetwork *instance;
+
+    bool isServerMode;
     QString getLocalIPAddress();
 
     QUdpSocket *udpSocket;

@@ -5,7 +5,7 @@ MatchingWidget::MatchingWidget(QWidget *parent)
     //, p2p(new P2PNetwork(this))
 {
     //bingoWidget = new BingoWidget(this);
-    p2p = new P2PNetwork(this);
+    p2p = P2PNetwork::getInstance();
     statusLabel = new QLabel("🔄 Waiting for match...", this);
     layout = new QVBoxLayout(this);
     layout->addWidget(statusLabel);
@@ -20,17 +20,6 @@ MatchingWidget::~MatchingWidget() {
 }
 
 void MatchingWidget::startMatching() {
-    statusLabel->setText("🔄 Matching...");
-    p2p->isMatchingActive = true;
-    p2p->isMatched = false;
-    p2p->startMatching();
-}
-
-void MatchingWidget::restartMatching() {
-    if (p2p) {
-        delete p2p;
-        p2p = new P2PNetwork(this);
-    }
     statusLabel->setText("🔄 Matching...");
     p2p->isMatchingActive = true;
     p2p->isMatched = false;

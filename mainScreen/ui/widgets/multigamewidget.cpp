@@ -36,7 +36,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     circleCheckBox = nullptr; // Initialize to nullptr even though we won't use it
 
     // 네트워크
-    network = new P2PNetwork(this);
+    network = P2PNetwork::getInstance();
     connect(network, &P2PNetwork::opponentScoreUpdated, this, &MultiGameWidget::updateOpponentScore);
     connect(network, &P2PNetwork::gameOverReceived, this, &MultiGameWidget::showFailMessage);
 
@@ -1041,16 +1041,18 @@ void MultiGameWidget::updateBingoScore() {
     // 빙고 점수 표시 업데이트 (영어로 변경)
     bingoScoreLabel->setText(QString("Bingo: %1").arg(bingoCount));
 
-    // 상대 플레이어에 빙고 점수 전송
-    if (network) {
-        qDebug() << "DEBUG: sending bingo score";
-        network->sendBingoScore(bingoCount);
-    }
+
 
     // 빙고 완성시 축하 메시지
     if (bingoCount > 0) {
         // 빙고 완성 효과 (배경색 변경 등)
         bingoScoreLabel->setStyleSheet("color: red; font-weight: bold;");
+
+        // 상대 플레이어에 빙고 점수 전송
+        if (network) {
+            qDebug() << "DEBUG: sending bingo score";
+            network->sendBingoScore(bingoCount);
+        }
     } else {
         bingoScoreLabel->setStyleSheet("");
     }
@@ -1070,6 +1072,7 @@ void MultiGameWidget::updateOpponentScore(int opponentScore) {
     qDebug() << "DEBUG: Updating opponent bingo score to:" << opponentScore;
     opponentBingoScoreLabel->setText(QString("Opponent Bingo: %1").arg(opponentScore));
 }
+
 
 // 새로운 함수 추가: 성공 메시지 표시 및 게임 초기화
 void MultiGameWidget::showSuccessMessage() {

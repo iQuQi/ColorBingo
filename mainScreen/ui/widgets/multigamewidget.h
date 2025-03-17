@@ -54,7 +54,6 @@ private slots:
     void showSuccessMessage();
     void hideSuccessAndReset();
     void resetGame();
-    void updateOpponentScore(int score);
     void onRestartButtonClicked();
     void onTimerTick();
     void updateTimerDisplay();
@@ -76,7 +75,7 @@ private:
     int colorDistance(const QColor &c1, const QColor &c2);
     bool isColorBright(const QColor &color);
     void updateBingoScore();
-    //void updateOpponentBingoScore(int opponentScore);
+    void updateOpponentScore(int opponentScore);
 
     // 셀 선택 및 카메라 제어 함수
     void selectCell(int row, int col);
