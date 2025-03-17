@@ -8,6 +8,7 @@
 #include <QColor>
 #include <QPixmap>
 #include <QPushButton>
+#include "background.h"
 #include "ui/widgets/colorcapturewidget.h"
 #include "ui/widgets/bingowidget.h"
 #include "ui/widgets/multigamewidget.h"
@@ -34,6 +35,7 @@ private:
     void setupMainScreen();
     void updateCenterWidgetPosition();
     bool event(QEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
     QPixmap createBearImage();
     QPixmap createVolumeImage(int volumeLevel);
     void updateVolumeButton();
@@ -50,7 +52,8 @@ private:
     
     QPushButton *volumeButton;
     int volumeLevel;
-
+    
+    QPixmap backgroundImage;
 };
 
 #endif // MAINWINDOW_H
