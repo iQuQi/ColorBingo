@@ -1244,7 +1244,7 @@ void MultiGameWidget::resetGame() {
     selectedCell = qMakePair(-1, -1);
 
     // 네트워크 초기화
-    network->disconnectFromPeer();
+    //network->disconnectFromPeer();
 
     // 색상 생성 코드 제거 - 기존 색상 유지
     // generateRandomColors(); <- 이 줄 제거 또는 주석 처리
@@ -1283,7 +1283,7 @@ void MultiGameWidget::onBackButtonClicked() {
         stopCamera();
     }
 
-    network->disconnectFromPeer();
+    //network->disconnectFromPeer();
 
     qDebug() << "DEBUG: MultiGameWidget - Emitting backToMainRequested signal";
     emit backToMainRequested();

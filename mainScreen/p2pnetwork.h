@@ -13,6 +13,7 @@ class P2PNetwork : public QObject {
 public:
 
     static P2PNetwork *getInstance();
+    static void resetInstance();
     void startMatching();
     void disconnectFromPeer();
     void sendBingoScore(int score);

@@ -496,6 +496,8 @@ void MainWindow::showMainMenu()
 {
     qDebug() << "DEBUG: Back to main menu requested - SAFE HANDLING";
     
+    network->disconnectFromPeer();
+
     // Ensure widget camera resources are released
     if (colorCaptureWidget && stackedWidget->currentWidget() == colorCaptureWidget) {
         qDebug() << "DEBUG: Stopping BingoPreparationWidget camera before returning to main menu";
@@ -531,6 +533,11 @@ void MainWindow::showMainMenu()
         stackedWidget->setCurrentWidget(mainMenu);
         qDebug() << "DEBUG: Main menu now displayed";
     });
+
+    isLocalMultiGameReady = false;
+    isOpponentMultiGameReady = false;
+    isMultiGameStarted = false;
+
 //=======
 /*
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
