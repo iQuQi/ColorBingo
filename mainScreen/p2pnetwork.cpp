@@ -167,6 +167,21 @@ void P2PNetwork::onSocketError(QAbstractSocket::SocketError socketError) {
     qDebug() << "ERROR: ❌ Socket error occurred:" << socketError;
 }
 
+void P2PNetwork::sendMultiGameReady() {
+    QString message = "CAPTURE_DONE";
+
+    if (isServerMode) {
+        connectedClient->write(message.toUtf8() + "\n");
+        connectedClient->flush();
+        qDebug() << "📤 Sent CAPTURE_DONE message to opponent";
+
+     } else {
+        clientSocket->write(message.toUtf8() + "\n");
+        clientSocket->flush();
+        qDebug() << "📤 Sent CAPTURE_DONE message to opponent";
+    }
+}
+
 // 상대보드에 점수 전송
 void P2PNetwork::sendBingoScore(int score) {
 
@@ -217,6 +232,9 @@ void P2PNetwork::onDataReceived() {
     } else if (message == "GAME_OVER") {
         qDebug() << "DEBUG: 🎯 Opponent won! Ending game...";
         emit gameOverReceived();
+    } else if (message == "CAPTURE_DONE") {
+        qDebug() << "DEBUG: 🎯 Opponent has completed capture!";
+        emit opponentMultiGameReady();
     }
 }
 

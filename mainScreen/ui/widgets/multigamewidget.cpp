@@ -262,6 +262,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     backButton->setFixedSize(80, 30); // 버튼 크기 고정
     connect(backButton, &QPushButton::clicked, this, &MultiGameWidget::onBackButtonClicked);
 
+    /*
     // Restart 버튼 추가
     restartButton = new QPushButton("Restart", this);
     restartButton->setFixedSize(80, 30); // 버튼 크기 고정
@@ -273,6 +274,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
                          "QPushButton:hover { background-color: rgba(70, 70, 70, 220); }";
     backButton->setStyleSheet(buttonStyle);
     restartButton->setStyleSheet(buttonStyle);
+    */
 
     // 초기 위치 설정
     updateBackButtonPosition();
@@ -1213,7 +1215,7 @@ QColor MultiGameWidget::correctBluecast(const QColor &color) {
 }
 
 void MultiGameWidget::updateBackButtonPosition() {
-    if (backButton && restartButton) {
+    if (backButton /*&& restartButton*/) {
         // 화면 우측 하단에서 약간 떨어진 위치에 배치
         int margin = 20;
         int buttonSpacing = 10; // 버튼 사이 간격
@@ -1223,15 +1225,16 @@ void MultiGameWidget::updateBackButtonPosition() {
                          height() - backButton->height() - margin);
 
         // Restart 버튼 위치 (Back 버튼 왼쪽)
-        restartButton->move(width() - backButton->width() - margin - buttonSpacing - restartButton->width(),
-                            height() - restartButton->height() - margin);
+        /*restartButton->move(width() - backButton->width() - margin - buttonSpacing - restartButton->width(),
+                            height() - restartButton->height() - margin);*/
 
         // 버튼들을 맨 위로 올림
         backButton->raise();
-        restartButton->raise();
+        //restartButton->raise();
     }
 }
 
+/*
 void MultiGameWidget::onRestartButtonClicked() {
     // 게임 진행 중 확인 (카메라가 작동 중이면 중지)
     if (isCapturing) {
@@ -1244,6 +1247,7 @@ void MultiGameWidget::onRestartButtonClicked() {
     // 상태 메시지 업데이트
     statusMessageLabel->setText("Game restarted! Please select a cell to match colors");
 }
+*/
 
 // 타이머 틱마다 호출되는 함수
 void MultiGameWidget::onTimerTick() {

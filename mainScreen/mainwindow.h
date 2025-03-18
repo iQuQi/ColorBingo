@@ -22,6 +22,8 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    P2PNetwork *network;
+
 private slots:
     void showMatchingScreen();
     void showBingoScreen();
@@ -32,6 +34,13 @@ private slots:
     void onVolumeButtonClicked();
 
 private:
+    bool isLocalMultiGameReady = false;
+    bool isOpponentMultiGameReady = false;
+    bool isMultiGameStarted = false;
+    QList<QColor> storedColors;
+
+    void checkIfBothPlayersReady();
+    void onOpponentMultiGameReady();
     void setupMainScreen();
     void updateCenterWidgetPosition();
     bool event(QEvent *event) override;
@@ -48,6 +57,8 @@ private:
     BingoWidget *bingoWidget;
     MultiGameWidget *multiGameWidget;
     MatchingWidget *matchingWidget;
+
+    QLabel *waitingLabel;
 
     
     QPushButton *volumeButton;

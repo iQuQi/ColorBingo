@@ -54,7 +54,7 @@ private slots:
     void showSuccessMessage();
     void hideSuccessAndReset();
     void resetGame();
-    void onRestartButtonClicked();
+    //void onRestartButtonClicked();
     void onTimerTick();
     void updateTimerDisplay();
     void updateTimerPosition();
@@ -169,7 +169,7 @@ private:
     QLabel *statusMessageLabel; // Label for displaying game status messages
 
     QPushButton* backButton; // Back 버튼
-    QPushButton* restartButton; // Restart 버튼
+    //QPushButton* restartButton; // Restart 버튼
 
     // 네트워크
     P2PNetwork *network;

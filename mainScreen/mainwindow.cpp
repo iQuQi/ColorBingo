@@ -29,6 +29,16 @@ MainWindow::MainWindow(QWidget *parent) :
     volumeLevel(2), // Default volume level is 2 (medium)
     backgroundImage() // 배경 이미지 초기화 추가
 {
+    network = P2PNetwork::getInstance();
+
+    connect(network, &P2PNetwork::opponentMultiGameReady, this, &MainWindow::onOpponentMultiGameReady);
+
+    waitingLabel = new QLabel("Waiting for Other Player...", this);
+    waitingLabel->setAlignment(Qt::AlignCenter);
+    waitingLabel->setStyleSheet("background-color: rgba(0, 0, 0, 150); color: white; font-size: 24px; padding: 10px;");
+    waitingLabel->setGeometry(50, 50, 400, 50);
+    waitingLabel->hide();
+
     // Set default window size
     resize(800, 600);
     
@@ -491,47 +501,87 @@ void MainWindow::onCreateBingoRequested(const QList<QColor> &colors)
 
 void MainWindow::onCreateMultiGameRequested(const QList<QColor> &colors)
 {
-    qDebug() << "DEBUG: Create Multi Game requested with" << colors.size() << "colors";
+    isLocalMultiGameReady = true;
+    storedColors = colors;
+    qDebug() << "DEBUG: Local board requested multi-game with" << colors.size() << "colors";
 
-    // Release camera resources - fully close
-    if (colorCaptureWidget) {
-        qDebug() << "DEBUG: Stopping camera before creating MultiGameWidget";
-        colorCaptureWidget->stopCameraCapture();
+    // 상대 보드에게 준비 완료 메시지 전송
+    network->sendMultiGameReady();
 
-        // Wait time for camera resource release
-        qDebug() << "DEBUG: Waiting for camera resources to be fully released";
-        QThread::msleep(1500); // Wait 1.5 seconds
+    // 상대방이 아직 준비되지 않았다면 "Waiting for Other Player"
+    if (!isOpponentMultiGameReady) {
+        qDebug() << "DEBUG: Waiting for other player to be ready";
+        waitingLabel->show();
     }
 
-    // Safely clean up existing bingoWidget if present
-    if (bingoWidget) {
-        qDebug() << "DEBUG: Cleaning up previous BingoWidget";
-        disconnect(bingoWidget); // Disconnect signals
-        stackedWidget->removeWidget(bingoWidget);
-        delete bingoWidget;
-        bingoWidget = nullptr;
+    checkIfBothPlayersReady();
+}
+
+void MainWindow::onOpponentMultiGameReady() {
+    isOpponentMultiGameReady = true;
+    qDebug() << "✅ Opponent board requested multi-game";
+
+    // 상대방이 준비되었으므로 "Waiting for Other Player" 메시지 숨김
+    waitingLabel->hide();
+
+    // 양쪽 보드가 모두 준비되었는지 확인
+    checkIfBothPlayersReady();
+}
+
+
+void MainWindow::checkIfBothPlayersReady() {
+    // ✅ 이미 실행된 경우 중복 실행 방지
+    if (isMultiGameStarted) {
+        qDebug() << "⚠️ Multi-game already started. Skipping duplicate call.";
+        return;
     }
 
-    if (multiGameWidget) {
-        qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
-        disconnect(multiGameWidget); // Disconnect signals
-        stackedWidget->removeWidget(multiGameWidget);
-        delete multiGameWidget;
-        multiGameWidget = nullptr;
+    if (isLocalMultiGameReady && isOpponentMultiGameReady) {
+        qDebug() << "DEBUG: 🎮 Both players are ready! Moving to MultiGame screen.";
+
+        // ✅ 중복 실행 방지 플래그 설정
+        isMultiGameStarted = true;
+
+        // Release camera resources - fully close
+        if (colorCaptureWidget) {
+            qDebug() << "DEBUG: Stopping camera before creating MultiGameWidget";
+            colorCaptureWidget->stopCameraCapture();
+
+            // Wait time for camera resource release
+            qDebug() << "DEBUG: Waiting for camera resources to be fully released";
+            QThread::msleep(1500); // Wait 1.5 seconds
+        }
+
+        // Safely clean up existing bingoWidget if present
+        if (bingoWidget) {
+            qDebug() << "DEBUG: Cleaning up previous BingoWidget";
+            disconnect(bingoWidget); // Disconnect signals
+            stackedWidget->removeWidget(bingoWidget);
+            delete bingoWidget;
+            bingoWidget = nullptr;
+        }
+
+        if (multiGameWidget) {
+            qDebug() << "DEBUG: Cleaning up previous MultiGameWidget";
+            disconnect(multiGameWidget); // Disconnect signals
+            stackedWidget->removeWidget(multiGameWidget);
+            delete multiGameWidget;
+            multiGameWidget = nullptr;
+        }
+
+        // Create MultiGameWidget
+        qDebug() << "DEBUG: Creating MultiGameWidget";
+        multiGameWidget = new MultiGameWidget(this, storedColors);
+
+        // Connect signals
+        connect(multiGameWidget, &MultiGameWidget::backToMainRequested,
+                this, &MainWindow::showMainMenu, Qt::QueuedConnection);
+
+        // Add to stacked widget and set as current widget
+        stackedWidget->addWidget(multiGameWidget);
+        stackedWidget->setCurrentWidget(multiGameWidget);
+        qDebug() << "DEBUG: MultiGameWidget now displayed";
     }
-
-    // Create MultiGameWidget
-    qDebug() << "DEBUG: Creating MultiGameWidget";
-    multiGameWidget = new MultiGameWidget(this, colors);
-
-    // Connect signals
-    connect(multiGameWidget, &MultiGameWidget::backToMainRequested,
-            this, &MainWindow::showMainMenu, Qt::QueuedConnection);
-
-    // Add to stacked widget and set as current widget
-    stackedWidget->addWidget(multiGameWidget);
-    stackedWidget->setCurrentWidget(multiGameWidget);
-    qDebug() << "DEBUG: MultiGameWidget now displayed";
 }
 
 // Display main menu (previously onBingoBackRequested)
