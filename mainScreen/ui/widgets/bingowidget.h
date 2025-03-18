@@ -66,7 +66,6 @@ private slots:
     void onBackButtonClicked();
     void updateRgbValues();
     
-    void onTiltModeCheckBoxToggled(bool checked);
     void onSubmitButtonClicked();
     void handleAccelerometerDataChanged(const AccelerometerData &data);
 
@@ -155,8 +154,6 @@ private:
     QLabel *successLabel;
 
     QPixmap xImage;
-
-    // bearImage
     QPixmap bearImage;
 
     // 색상 보정 관련 함수
@@ -213,16 +210,16 @@ private:
     
     // 가속도계 관련 멤버 변수
     Accelerometer *accelerometer; // 가속도계 객체
-    bool useTiltMode;           // 틸트 모드 사용 여부
     QColor capturedColor;       // 캡처된 색상
     QColor tiltAdjustedColor;   // 틸트로 조절된 색상
     
-    // 새로 추가된 UI 요소
-    QCheckBox *tiltModeCheckBox; // 틸트 모드 체크박스
+    // UI 요소
     QPushButton *submitButton;  // 제출 버튼
     
     // 원 미리보기 함수 추가
     void updateCirclePreview(int radius);
+
+    const int THRESHOLD = 8;
 };
 
 #endif // BINGOWIDGET_H
