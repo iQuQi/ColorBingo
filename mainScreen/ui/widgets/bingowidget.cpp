@@ -907,8 +907,7 @@ void BingoWidget::updateCameraFrame() {
         //     }
         // }
         // catch (...) {
-        //     qDebug() << "ERROR: Exception during color adjustment, using original frame";
-        //     adjustedFrame = frame;
+            // adjustedFrame = frame;
         // }
         
         // Scale image to fit the QLabel while maintaining aspect ratio
@@ -1236,10 +1235,10 @@ void BingoWidget::onCaptureButtonClicked() {
                 bingoCells[row][col]->setPixmap(cellBg);
                 
                 // 테두리 스타일 복원
-                QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-                if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-                if (col == 2) borderStyle += " border-right: 1px solid black;";
-                bingoCells[row][col]->setStyleSheet(borderStyle);
+                // QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+                // if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+                // if (col == 2) borderStyle += " border-right: 1px solid black;";
+                // bingoCells[row][col]->setStyleSheet(borderStyle);
                 
                 // 틸트 모드 상태 메시지 유지하고 가속도계 상태 재확인
                 if (accelerometer && accelerometer->isInitialized()) {
@@ -1359,10 +1358,14 @@ void BingoWidget::onSubmitButtonClicked() {
         SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
         
         // 2초 후에 X 표시 제거하고 원래 스타일로 돌려놓기
-        QTimer::singleShot(2000, this, [this, row, col]() {
+        QTimer::singleShot(2000, this, [this, row, col, style]() {
             if (row >= 0 && row < 3 && col >= 0 && col < 3) {
                 if (!bingoStatus[row][col]) {
-                    updateCellStyle(row, col);
+                    // X 표시 제거하고 붉은 테두리 스타일 유지
+                    QPixmap cellBg(bingoCells[row][col]->size());
+                    cellBg.fill(cellColors[row][col]);
+                    bingoCells[row][col]->setPixmap(cellBg);
+                    bingoCells[row][col]->setStyleSheet(style);
                 }
             }
             statusMessageLabel->setText("Try again or select another cell");
