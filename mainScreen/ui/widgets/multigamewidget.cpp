@@ -1156,7 +1156,6 @@ void MultiGameWidget::onCaptureButtonClicked() {
             fadeXTimer->stop();
         }
         fadeXTimer->start(2000);
-
     }
 }
 
@@ -1169,7 +1168,7 @@ void MultiGameWidget::clearXMark() {
 
             // pixmap이 설정되어 있고, 체크되지 않은 셀인 경우
             if (!cellPixmap.isNull() && !bingoStatus[row][col]) {
-                // 원래 스타일로 복원 (보너스 칸인 경우 데이지 꽃 이미지 다시 표시)
+                // 원래 스타일로 복원 (보너스 칸인 경우 별 이미지 다시 표시)
                 updateCellStyle(row, col);
             }
         }
