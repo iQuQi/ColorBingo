@@ -25,6 +25,7 @@
 #include "hardwareInterface/webcambutton.h"
 #include "../../utils/pixelartgenerator.h"
 #include "hardwareInterface/accelerometer.h"
+#include <QSet>
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -68,6 +69,8 @@ private slots:
     
     void onSubmitButtonClicked();
     void handleAccelerometerDataChanged(const AccelerometerData &data);
+    void showBonusMessage();
+    void hideBonusMessage();
 
 private:
     // 빙고 관련 함수들
@@ -220,6 +223,18 @@ private:
     void updateCirclePreview(int radius);
 
     const int THRESHOLD = 8;
+    // 보너스 색상 관련 변수 추가
+    bool isBonusCell[3][3]; // 보너스 칸(완전 랜덤 색상) 여부 추적
+    QSet<QPair<int, int>> countedBonusCells; // 이미 점수 계산에 사용된 보너스 칸
+
+    // GameMode gameMode; // 현재 게임 모드 저장 변수 추가
+
+    QList<QColor> captureColorsFromFrame();
+
+    // 보너스 메시지 관련 멤버
+    QLabel *bonusMessageLabel; // 보너스 메시지 레이블
+    QTimer *bonusMessageTimer; // 보너스 메시지 타이머
+    bool hadBonusInLastLine;  // 마지막으로 완성한 빙고 라인에 보너스가 있었는지 추적
 };
 
 #endif // BINGOWIDGET_H

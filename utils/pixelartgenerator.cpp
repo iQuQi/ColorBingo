@@ -1,6 +1,4 @@
 #include "pixelartgenerator.h"
-#include <QDebug>
-#include <cmath>  // 수학 함수 및 상수(M_PI, cos 등)를 위한 헤더 추가
 
 // 싱글톤 인스턴스 초기화
 PixelArtGenerator* PixelArtGenerator::instance = nullptr;
@@ -35,14 +33,16 @@ QString PixelArtGenerator::createPixelButtonStyle(const QColor &baseColor, int b
         "   border: %2px solid %3;"
         "   border-radius: %4px;"
         "   padding: 15px 30px;"
-        // 내부 픽셀 느낌의 그라데이션 효과 - 픽셀 크기 증가 (4px→8px)
+        // 내부 픽셀 느낌의 그라데이션 효과
         "   background-image: repeating-linear-gradient("
         "       to bottom,"
         "       %5 0px,"
-        "       %5 8px,"
-        "       %1 8px,"
-        "       %1 16px"
+        "       %5 4px,"
+        "       %1 4px,"
+        "       %1 8px"
         "   );"
+        // 텍스트에 픽셀 느낌의 그림자 효과
+        "   text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);"
         "}"
         
         "QPushButton:hover {"
@@ -50,9 +50,9 @@ QString PixelArtGenerator::createPixelButtonStyle(const QColor &baseColor, int b
         "   background-image: repeating-linear-gradient("
         "       to bottom,"
         "       %5 0px,"
-        "       %5 8px,"
-        "       %1 8px,"
-        "       %1 16px"
+        "       %5 4px,"
+        "       %1 4px,"
+        "       %1 8px"
         "   );"
         "   border-color: white;"
         "}"
@@ -62,9 +62,9 @@ QString PixelArtGenerator::createPixelButtonStyle(const QColor &baseColor, int b
         "   background-image: repeating-linear-gradient("
         "       to bottom,"
         "       %3 0px,"
-        "       %3 8px,"
-        "       %1 8px,"
-        "       %1 16px"
+        "       %3 4px,"
+        "       %1 4px,"
+        "       %1 8px"
         "   );"
         "   padding-top: 17px;"
         "   padding-bottom: 13px;"
@@ -74,7 +74,7 @@ QString PixelArtGenerator::createPixelButtonStyle(const QColor &baseColor, int b
         
         "QPushButton:focus {"
         "   outline: none;"
-        "   border: %2px solid %3;"
+        "   border: %2px dashed white;"
         "}"
     ).arg(baseColor.name())
      .arg(borderWidth)
@@ -248,21 +248,21 @@ QPixmap PixelArtGenerator::createSadFacePixelArt(int size) {
         }
     }
     
-    // 눈 그리기 - 크기를 줄이고 위치를 낮춤
-    for (int y = 40 * scale; y < 46 * scale; y += pixelSize) {  // 눈 위치를 아래로 이동 (35->40)
-        // 왼쪽 눈 - 크기 줄임
-        for (int x = 37 * scale; x < 43 * scale; x += pixelSize) {  // 35-45 -> 37-43
+    // 눈 그리기
+    for (int y = 35 * scale; y < 45 * scale; y += pixelSize) {
+        // 왼쪽 눈
+        for (int x = 35 * scale; x < 45 * scale; x += pixelSize) {
             painter.fillRect(x, y, pixelSize, pixelSize, outlineColor);
         }
-        // 오른쪽 눈 - 크기 줄임
-        for (int x = 57 * scale; x < 63 * scale; x += pixelSize) {  // 55-65 -> 57-63
+        // 오른쪽 눈
+        for (int x = 55 * scale; x < 65 * scale; x += pixelSize) {
             painter.fillRect(x, y, pixelSize, pixelSize, outlineColor);
         }
     }
     
-    // 슬픈 입 그리기 (아래로 향한 곡선) - 크기를 줄이고 위치를 위로 올림
-    for (int x = 40 * scale; x < 60 * scale; x += pixelSize) {  // 35-65 -> 40-60 (입 너비 줄임)
-        int y = 60 * scale + (x - 50 * scale) * (x - 50 * scale) / (45 * scale);  // 65->60 (입 위치 위로 올림)
+    // 슬픈 입 그리기 (아래로 향한 곡선)
+    for (int x = 35 * scale; x < 65 * scale; x += pixelSize) {
+        int y = 65 * scale + (x - 50 * scale) * (x - 50 * scale) / (40 * scale);
         painter.fillRect(x, y, pixelSize, pixelSize, outlineColor);
     }
     
@@ -373,191 +373,4 @@ QPixmap PixelArtGenerator::createVolumeImage(int volumeLevel, int size) {
     }
     
     return volumeImage;
-}
-
-// 데이지 꽃 픽셀 아트 생성
-QPixmap PixelArtGenerator::createDaisyFlowerImage(int size) {
-    qDebug() << "Creating daisy flower image with size:" << size;
-    
-    QPixmap daisyImage(size, size);
-    daisyImage.fill(Qt::transparent);
-    QPainter painter(&daisyImage);
-    
-    // 픽셀 느낌을 조금만 남기기 위해 안티앨리어싱 활성화
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    
-    // 크기 비율 계산 (원본 40x40 기준)
-    float scale = size / 40.0f;
-    
-    // 데이지 꽃 색상
-    QColor petalColor(255, 255, 255); // 흰색 꽃잎
-    QColor petalShadowColor(240, 240, 240); // 꽃잎 그림자
-    QColor centerColor(255, 220, 0);  // 노란색 꽃 중심
-    QColor centerDarkColor(230, 180, 0); // 꽃 중심 그림자
-    
-    // 배경 원 - 꽃 전체 영역 정의
-    int flowerSize = 36 * scale;
-    QRectF flowerRect((size - flowerSize) / 2, (size - flowerSize) / 2, flowerSize, flowerSize);
-    
-    // 꽃잎 그리기 (6방향으로 변경)
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(petalColor);
-    
-    // 각 꽃잎을 개별적으로 그리기 위한 준비
-    int petalCount = 6; // 8개에서 6개로 변경
-    double angleStep = 360.0 / petalCount;
-    int petalLength = 18 * scale; // 14에서 18로 증가시켜 더 길게
-    int petalWidth = 10 * scale;
-    QPointF center(size / 2, size / 2);
-    
-    // 각 꽃잎을 타원형으로 그리기
-    for (int i = 0; i < petalCount; i++) {
-        double angle = i * angleStep;
-        
-        // 꽃잎의 중심 위치 계산
-        double radians = angle * M_PI / 180.0;
-        double distance = 8 * scale; // 중심에서의 거리
-        QPointF petalCenter(
-            center.x() + cos(radians) * distance,
-            center.y() + sin(radians) * distance
-        );
-        
-        // 꽃잎 그리기
-        painter.save();
-        painter.translate(petalCenter);
-        painter.rotate(angle);
-        
-        // 꽃잎 그림자 (살짝 어두운 영역)
-        painter.setBrush(petalShadowColor);
-        QRectF petalShadowRect(-petalLength/2 * 0.9, -petalWidth/2 * 0.9, petalLength * 0.9, petalWidth * 0.9);
-        painter.drawEllipse(petalShadowRect);
-        
-        // 꽃잎 메인
-        painter.setBrush(petalColor);
-        QRectF petalRect(-petalLength/2, -petalWidth/2, petalLength, petalWidth);
-        painter.drawEllipse(petalRect);
-        
-        painter.restore();
-    }
-    
-    // 꽃 중심 (노란색 원) - 크기 줄임
-    int centerSize = 12 * scale; // 16에서 12로 줄임
-    QRectF centerRect((size - centerSize) / 2, (size - centerSize) / 2, centerSize, centerSize);
-    
-    // 약간의 그라데이션 효과를 위한 그림자
-    painter.setBrush(centerDarkColor);
-    painter.drawEllipse(centerRect.adjusted(1, 1, -1, -1));
-    
-    // 메인 중앙 원
-    painter.setBrush(centerColor);
-    painter.drawEllipse(centerRect);
-    
-    // 중앙에 텍스처 느낌 추가 (작은 점들)
-    painter.setPen(QPen(QColor(230, 160, 0), 1));
-    int dotsCount = 10;
-    for (int i = 0; i < dotsCount; i++) {
-        double dotAngle = i * (360.0 / dotsCount) * M_PI / 180.0;
-        double dotDistance = centerSize / 5;
-        QPointF dotPos(
-            center.x() + cos(dotAngle) * dotDistance,
-            center.y() + sin(dotAngle) * dotDistance
-        );
-        painter.drawPoint(dotPos);
-    }
-    
-    // 페인터 종료 - 중요!
-    painter.end();
-    
-    // 이미지가 제대로 생성되었는지 확인
-    qDebug() << "Daisy flower image created - size:" << daisyImage.size() 
-             << "isNull:" << daisyImage.isNull();
-    
-    return daisyImage;
-}
-
-// 보라색 귀여운 악마 픽셀 아트 생성
-QPixmap PixelArtGenerator::createCuteDevilImage(int size) {
-    qDebug() << "Creating cute devil image with size:" << size;
-    
-    QPixmap devilImage(size, size);
-    devilImage.fill(Qt::transparent);
-    QPainter painter(&devilImage);
-    
-    // 안티앨리어싱 활성화 (부드러운 이미지를 위해)
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    
-    // 크기 비율 계산 (원본 40x40 기준)
-    float scale = size / 40.0f;
-    
-    // 악마 색상 - 참조 이미지 색상에 맞춤
-    QColor bodyColor(138, 73, 214);  // 보라색 몸통
-    QColor hornColor(116, 55, 188);  // 조금 더 어두운 보라색 뿔
-    QColor eyeColor(255, 255, 255);  // 하얀색 눈
-    QColor pupilColor(0, 0, 0);      // 검은색 동공
-    QColor mouthColor(70, 30, 120);  // 어두운 보라색 (입)
-    
-    // 원형 몸통 그리기
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(bodyColor);
-    painter.drawEllipse(QRectF(2 * scale, 2 * scale, 36 * scale, 36 * scale));
-    
-    // 뿔 그리기 (삼각형 형태)
-    QPolygonF leftHorn;
-    leftHorn << QPointF(10 * scale, 12 * scale)
-             << QPointF(4 * scale, 2 * scale)
-             << QPointF(16 * scale, 5 * scale);
-             
-    QPolygonF rightHorn;
-    rightHorn << QPointF(30 * scale, 12 * scale)
-              << QPointF(36 * scale, 2 * scale)
-              << QPointF(24 * scale, 5 * scale);
-              
-    painter.setBrush(bodyColor);
-    painter.drawPolygon(leftHorn);
-    painter.drawPolygon(rightHorn);
-    
-    // 내부에 약간 어두운 뿔 표현
-    QPolygonF leftHornShade;
-    leftHornShade << QPointF(10 * scale, 10 * scale)
-                  << QPointF(6 * scale, 3 * scale)
-                  << QPointF(14 * scale, 5 * scale);
-                  
-    QPolygonF rightHornShade;
-    rightHornShade << QPointF(30 * scale, 10 * scale)
-                   << QPointF(34 * scale, 3 * scale)
-                   << QPointF(26 * scale, 5 * scale);
-                   
-    painter.setBrush(hornColor);
-    painter.drawPolygon(leftHornShade);
-    painter.drawPolygon(rightHornShade);
-    
-    // 눈 그리기 - 타원형
-    painter.setBrush(eyeColor);
-    painter.drawEllipse(QRectF(12 * scale, 14 * scale, 6 * scale, 8 * scale));  // 왼쪽 눈
-    painter.drawEllipse(QRectF(22 * scale, 14 * scale, 6 * scale, 8 * scale));  // 오른쪽 눈
-    
-    // 동공 그리기 - 타원형
-    painter.setBrush(pupilColor);
-    painter.drawEllipse(QRectF(13 * scale, 16 * scale, 4 * scale, 5 * scale));  // 왼쪽 동공
-    painter.drawEllipse(QRectF(23 * scale, 16 * scale, 4 * scale, 5 * scale));  // 오른쪽 동공
-    
-    // 눈썹 그리기 - 사선형
-    QPen eyebrowPen(pupilColor, 1.5 * scale, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    painter.setPen(eyebrowPen);
-    painter.drawLine(QPointF(11 * scale, 13 * scale), QPointF(16 * scale, 12 * scale));  // 왼쪽 눈썹
-    painter.drawLine(QPointF(24 * scale, 12 * scale), QPointF(29 * scale, 13 * scale));  // 오른쪽 눈썹
-    
-    // 미소 그리기 - 반원형
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(mouthColor);
-    painter.drawChord(QRectF(12 * scale, 24 * scale, 16 * scale, 10 * scale), 0, 180 * 16);  // 미소
-    
-    // 페인터 종료 - 중요!
-    painter.end();
-    
-    // 이미지가 제대로 생성되었는지 확인
-    qDebug() << "Cute devil image created - size:" << devilImage.size() 
-             << "isNull:" << devilImage.isNull();
-    
-    return devilImage;
 } 

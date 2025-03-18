@@ -437,6 +437,19 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     
     // 가속도계 초기화
     initializeAccelerometer();
+
+    // 보너스 메시지 레이블 초기화
+    bonusMessageLabel = new QLabel(this);
+    bonusMessageLabel->setAlignment(Qt::AlignCenter);
+    bonusMessageLabel->hide(); // 초기에는 숨김
+
+    // 보너스 메시지 타이머 초기화
+    bonusMessageTimer = new QTimer(this);
+    bonusMessageTimer->setSingleShot(true);
+    connect(bonusMessageTimer, &QTimer::timeout, this, &BingoWidget::hideBonusMessage);
+
+    // 보너스 추적 변수 초기화
+    hadBonusInLastLine = false;
 }
 
 BingoWidget::~BingoWidget() {
@@ -552,10 +565,41 @@ void BingoWidget::selectCell(int row, int col) {
     if (isCapturing) {
         stopCamera();
     }
+    
+    // 경계선 스타일 생성
+    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+    
+    if (row == 2) {
+        borderStyle += " border-bottom: 1px solid black;";
+    }
+    if (col == 2) {
+        borderStyle += " border-right: 1px solid black;";
+    }
+    
+    // 선택된 셀 강조 표시 (빨간색 테두리 3px)
+    QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
+    bingoCells[row][col]->setStyleSheet(style);
+    
+    // 보너스 칸인 경우 데이지 꽃 이미지를 유지
+    if (isBonusCell[row][col] && !bingoStatus[row][col]) {
+        QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
+        bingoCells[row][col]->setPixmap(daisyImage);
+        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+    }
+    
+    // 카메라 시작
     startCamera();
     
     // 셀이 선택되었으니 상태 메시지 업데이트
-    statusMessageLabel->setText(QString("Selected cell (%1,%2) - Press camera button to match colors").arg(row+1).arg(col+1));
+    if (isBonusCell[row][col]) {
+        // 보너스 셀인 경우 추가 메시지 표시
+        statusMessageLabel->setText(QString("This is the bonus cell. Bingo here gives +1 point!\n Press camera button to match colors").arg(row+1).arg(col+1));
+    } else {
+        // 일반 셀인 경우 기본 메시지 표시
+        statusMessageLabel->setText(QString("Press camera button to match colors").arg(row+1).arg(col+1));
+    }
 }
 
 // 셀 선택 해제 및 카메라 중지 함수
@@ -664,6 +708,13 @@ void BingoWidget::stopCamera() {
 
 // 채도가 낮은 랜덤 색상 생성
 void BingoWidget::generateRandomColors() {
+    // 초기화: 모든 셀을 보너스 아님으로 설정
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            isBonusCell[row][col] = false;
+        }
+    }
+    
     // 9개의 색상을 담을 배열
     QList<QColor> colors;
     
@@ -692,6 +743,27 @@ void BingoWidget::generateRandomColors() {
         int j = QRandomGenerator::global()->bounded(colors.size());
         colors.swapItemsAt(i, j);
     }
+
+    // 색상 배치를 위한 셀 위치 랜덤화
+    QList<QPair<int, int>> cellPositions;
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            cellPositions.append(qMakePair(row, col));
+        }
+    }
+    
+    // 위치 섞기
+    for(int i = 0; i < cellPositions.size(); ++i) {
+        int j = QRandomGenerator::global()->bounded(cellPositions.size());
+        cellPositions.swapItemsAt(i, j);
+    }
+    
+    // 무작위로 2개의 위치를 보너스 칸으로 지정
+    for (int i = 0; i < 2; ++i) {
+        int row = cellPositions[i].first;
+        int col = cellPositions[i].second;
+        isBonusCell[row][col] = true;
+    }
     
     // 섞인 색상을 빙고판에 적용
     int colorIndex = 0;
@@ -709,57 +781,25 @@ void BingoWidget::generateRandomColors() {
                 borderStyle += " border-right: 1px solid black;";
             }
             
-            // 배경색 적용, 텍스트 제거함
-            bingoCells[row][col]->setText("");
+            // 보너스 칸인 경우 시각적 표시 추가
+            if (isBonusCell[row][col]) {
+                bingoCells[row][col]->setText("B");
+                bingoCells[row][col]->setAlignment(Qt::AlignTop | Qt::AlignRight);
+                QFont font = bingoCells[row][col]->font();
+                font.setBold(true);
+                font.setPointSize(14);
+                bingoCells[row][col]->setFont(font);
+            } else {
+                bingoCells[row][col]->setText("");
+            }
+            
+            // 배경색 적용
             bingoCells[row][col]->setStyleSheet(
                 QString("background-color: %1; %2")
                 .arg(cellColors[row][col].name())
                 .arg(borderStyle)
             );
         }
-    }
-}
-
-void BingoWidget::updateCellStyle(int row, int col) {
-    // 경계선 스타일 생성
-    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-    
-    if (row == 2) {
-        borderStyle += " border-bottom: 1px solid black;";
-    }
-    if (col == 2) {
-        borderStyle += " border-right: 1px solid black;";
-    }
-    
-    // 기본 스타일 적용
-    QString style = QString("background-color: %1; %2")
-                   .arg(cellColors[row][col].name())
-                   .arg(borderStyle);
-    
-    bingoCells[row][col]->setStyleSheet(style);
-    
-    if (bingoStatus[row][col]) {
-        // 곰돌이 이미지 적용 - 더 크게 스케일링
-        QPixmap scaledBear = bearImage.scaled(
-            bingoCells[row][col]->width() - 20,  // 여백 축소 (30→20)
-            bingoCells[row][col]->height() - 20, // 여백 축소 (30→20)
-            Qt::KeepAspectRatio,
-            Qt::SmoothTransformation
-        );
-        
-        // 텍스트 지우고 이미지 설정
-        bingoCells[row][col]->clear();
-        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
-        
-        // 내부 여백을 균등하게 설정하여 정확히 중앙 정렬
-        int margin = 10; // 여백 축소 (15→10)
-        bingoCells[row][col]->setContentsMargins(margin, margin, margin, margin);
-        
-        bingoCells[row][col]->setPixmap(scaledBear);
-    } else {
-        // 이미지와 텍스트 모두 지우기
-        bingoCells[row][col]->clear();
-        bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);
     }
 }
 
@@ -1117,7 +1157,7 @@ void BingoWidget::onCaptureButtonClicked() {
     // 새로운 색상 캡처
     capturedColor = QColor(avgRed, avgGreen, avgBlue);
     
-    qDebug() << "Capture button clicked - 캡처된 색상: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
+    qDebug() << "Capture button clicked - Captured color: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
     qDebug() << "Fresh capture: " << (isFreshCapture ? "Yes" : "No");
     
     // 카메라 중지
@@ -1259,7 +1299,10 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
     if (distance <= THRESHOLD) {  // 색상이 유사함 - 빙고 처리
         qDebug() << "Color match successful! Processing bingo";
         bingoStatus[row][col] = true;
-                    updateCellStyle(row, col);
+        updateCellStyle(row, col);
+        
+        // 정답 소리 재생 추가
+        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
         
         // 선택 초기화
         selectedCell = qMakePair(-1, -1);
@@ -1269,11 +1312,6 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
         
         // 상태 메시지 업데이트
         statusMessageLabel->setText("Great job! Perfect color match!");
-        
-        // 2초 후에 메시지 변경하는 타이머 설정
-        QTimer::singleShot(2000, this, [this]() {
-            statusMessageLabel->setText("Please select a cell to match colors");
-        });
         
         // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
         if (isCapturing) {
@@ -1297,13 +1335,10 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
                 sliderWidget->hide();
             }
         }
-        
-        // 성공 효과음 재생
-        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
     } else {  // 색상이 다름 - X 표시 (개선된 코드)
         qDebug() << "Color match failed - drawing X mark";
         
-        // 안전하게 새로운 접근법: 셀 자체에 X 표시 그리기
+        // 셀 자체에 X 표시 그리기
         QPixmap cellBg(bingoCells[row][col]->size());
         cellBg.fill(cellColors[row][col]);
         
@@ -1328,7 +1363,7 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
         if (row == 2) borderStyle += " border-bottom: 1px solid black;";
         if (col == 2) borderStyle += " border-right: 1px solid black;";
         
-        // 셀에 합성된 이미지 적용
+        // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
         bingoCells[row][col]->setPixmap(cellBg);
         bingoCells[row][col]->setStyleSheet(borderStyle);
         
@@ -1347,6 +1382,12 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
         
         // 실패 효과음 재생
         SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
+        
+        // 기존 타이머가 돌고 있으면 중지하고 새로 시작
+        if (fadeXTimer->isActive()) {
+            fadeXTimer->stop();
+        }
+        fadeXTimer->start(2000);
     }
 
     capturedColor = QColor();
@@ -1358,42 +1399,116 @@ void BingoWidget::clearXMark() {
         for (int col = 0; col < 3; ++col) {
             // deprecated 경고 수정: pixmap(Qt::ReturnByValue) 사용
             QPixmap cellPixmap = bingoCells[row][col]->pixmap(Qt::ReturnByValue);
-            
+
             // pixmap이 설정되어 있고, 체크되지 않은 셀인 경우
             if (!cellPixmap.isNull() && !bingoStatus[row][col]) {
+                // 원래 스타일로 복원 (보너스 칸인 경우 데이지 꽃 이미지 다시 표시)
                 updateCellStyle(row, col);
             }
         }
     }
+    
+    // 상태 메시지 업데이트
+    statusMessageLabel->setText("Try again or select another cell");
 }
 
 void BingoWidget::updateBingoScore() {
     int oldBingoCount = bingoCount;
+    
+    // 점수 계산 전에 보너스 칸 카운트 초기화
+    countedBonusCells.clear();
+    hadBonusInLastLine = false;
     
     bingoCount = 0;
     
     // 가로줄 확인
     for (int row = 0; row < 3; ++row) {
         if (bingoStatus[row][0] && bingoStatus[row][1] && bingoStatus[row][2]) {
-            bingoCount++;
+            // 이 줄에 보너스 칸이 있는지 확인
+            bool hasBonus = false;
+            for (int col = 0; col < 3; ++col) {
+                if (isBonusCell[row][col] && !countedBonusCells.contains(qMakePair(row, col))) {
+                    hasBonus = true;
+                    countedBonusCells.insert(qMakePair(row, col));
+                    break; // 한 줄에 여러 보너스 칸이 있어도 한 번만 보너스 적용
+                }
+            }
+            
+            // 보너스 칸이 포함된 경우 2점, 아니면 1점
+            bingoCount += (hasBonus ? 2 : 1);
+            
+            // 새로운 빙고가 생겼고, 보너스가 포함되어 있으면 표시
+            if (bingoCount > oldBingoCount && hasBonus) {
+                hadBonusInLastLine = true;
+            }
         }
     }
     
     // 세로줄 확인
     for (int col = 0; col < 3; ++col) {
         if (bingoStatus[0][col] && bingoStatus[1][col] && bingoStatus[2][col]) {
-            bingoCount++;
+            // 이 줄에 보너스 칸이 있는지 확인
+            bool hasBonus = false;
+            for (int row = 0; row < 3; ++row) {
+                if (isBonusCell[row][col] && !countedBonusCells.contains(qMakePair(row, col))) {
+                    hasBonus = true;
+                    countedBonusCells.insert(qMakePair(row, col));
+                    break; // 한 줄에 여러 보너스 칸이 있어도 한 번만 보너스 적용
+                }
+            }
+            
+            // 보너스 칸이 포함된 경우 2점, 아니면 1점
+            bingoCount += (hasBonus ? 2 : 1);
+            
+            // 새로운 빙고가 생겼고, 보너스가 포함되어 있으면 표시
+            if (bingoCount > oldBingoCount && hasBonus) {
+                hadBonusInLastLine = true;
+            }
         }
     }
     
     // 대각선 확인 (좌상단 -> 우하단)
     if (bingoStatus[0][0] && bingoStatus[1][1] && bingoStatus[2][2]) {
-        bingoCount++;
+        // 이 줄에 보너스 칸이 있는지 확인
+        bool hasBonus = false;
+        for (int i = 0; i < 3; ++i) {
+            if (isBonusCell[i][i] && !countedBonusCells.contains(qMakePair(i, i))) {
+                hasBonus = true;
+                countedBonusCells.insert(qMakePair(i, i));
+                break; // 한 줄에 여러 보너스 칸이 있어도 한 번만 보너스 적용
+            }
+        }
+        
+        // 보너스 칸이 포함된 경우 2점, 아니면 1점
+        bingoCount += (hasBonus ? 2 : 1);
+        
+        // 새로운 빙고가 생겼고, 보너스가 포함되어 있으면 표시
+        if (bingoCount > oldBingoCount && hasBonus) {
+            hadBonusInLastLine = true;
+        }
     }
     
     // 대각선 확인 (우상단 -> 좌하단)
     if (bingoStatus[0][2] && bingoStatus[1][1] && bingoStatus[2][0]) {
-        bingoCount++;
+        // 이 줄에 보너스 칸이 있는지 확인
+        bool hasBonus = false;
+        for (int i = 0; i < 3; ++i) {
+            int row = i;
+            int col = 2 - i;
+            if (isBonusCell[row][col] && !countedBonusCells.contains(qMakePair(row, col))) {
+                hasBonus = true;
+                countedBonusCells.insert(qMakePair(row, col));
+                break; // 한 줄에 여러 보너스 칸이 있어도 한 번만 보너스 적용
+            }
+        }
+        
+        // 보너스 칸이 포함된 경우 2점, 아니면 1점
+        bingoCount += (hasBonus ? 2 : 1);
+        
+        // 새로운 빙고가 생겼고, 보너스가 포함되어 있으면 표시
+        if (bingoCount > oldBingoCount && hasBonus) {
+            hadBonusInLastLine = true;
+        }
     }
     
     // 빙고 점수 표시 업데이트 (영어로 변경)
@@ -1402,6 +1517,12 @@ void BingoWidget::updateBingoScore() {
     if (bingoCount > oldBingoCount) {
         // 빙고 완성시에는 효과음 없음
         qDebug() << "SUCCESS! (bingoCount: " << bingoCount << ")";
+        
+        // 보너스 칸이 포함된 빙고가 있으면 BONUS 메시지 표시
+        if (hadBonusInLastLine) {
+            qDebug() << "Bingo completed with bonus cell! Displaying BONUS message";
+            showBonusMessage();
+        }
     }
     
     // 빙고 완성시 축하 메시지
@@ -1415,7 +1536,7 @@ void BingoWidget::updateBingoScore() {
     // 3빙고 이상 달성 확인 - 디버그 로그 추가 및 가시성 향상
     qDebug() << "DEBUG: Current bingo count:" << bingoCount;
     if (bingoCount >= 3) {
-        qDebug() << "DEBUG: 3빙고 이상 달성! 성공 메시지 표시";
+        qDebug() << "DEBUG: Achieved 3 or more bingos! Displaying success message";
         // SUCCESS 메시지 표시
         showSuccessMessage();
     }
@@ -1423,7 +1544,7 @@ void BingoWidget::updateBingoScore() {
 
 // 새로운 함수 추가: 성공 메시지 표시 및 게임 초기화
 void BingoWidget::showSuccessMessage() {
-    qDebug() << "DEBUG: showSuccessMessage 함수 시작";
+    qDebug() << "DEBUG: showSuccessMessage function started";
     
     // 성공 메시지 레이블 초기화 및 표시
     successLabel->setVisible(true);
@@ -1473,15 +1594,15 @@ void BingoWidget::showSuccessMessage() {
     
     // 결과물을 레이블에 설정
     successLabel->setPixmap(combinedPixmap);
-    qDebug() << "DEBUG: 트로피 이미지와 SUCCESS 텍스트 설정 완료";
+    qDebug() << "DEBUG: Trophy image and SUCCESS text setup completed";
     
     // 5초 후 메시지 숨기고 게임 초기화 (효과음이 완전히 재생될 때까지 대기)
     successTimer->start(5000);
-    qDebug() << "DEBUG: 성공 타이머 시작, 5초 후 메시지 사라짐";
+    qDebug() << "DEBUG: Success timer started, message will disappear after 5 seconds";
     
     // 성공 효과음 재생
     SoundManager::getInstance()->playEffect(SoundManager::SUCCESS_SOUND);
-    qDebug() << "DEBUG: 성공 효과음 재생";
+    qDebug() << "DEBUG: Playing success sound effect";
 }
 
 // 새로운 함수 추가: 성공 메시지 숨기고 게임 초기화
@@ -1560,6 +1681,11 @@ void BingoWidget::resizeEvent(QResizeEvent *event) {
     // 실패 메시지 레이블 크기 조정
     if (failLabel) {
         failLabel->setGeometry(0, 0, width(), height());
+    }
+    
+    // 보너스 메시지 레이블 크기 조정
+    if (bonusMessageLabel) {
+        bonusMessageLabel->setGeometry(0, 0, width(), height());
     }
     
     // 타이머 위치 업데이트
@@ -1720,7 +1846,7 @@ void BingoWidget::stopGameTimer() {
 
 // 실패 메시지 표시
 void BingoWidget::showFailMessage() {
-    qDebug() << "DEBUG: showFailMessage 함수 시작";
+    qDebug() << "DEBUG: showFailMessage function started";
     
     // 카메라가 실행 중이면 중지
     if (isCapturing) {
@@ -1734,7 +1860,7 @@ void BingoWidget::showFailMessage() {
     // 실패 메시지 레이블 크기와 위치 설정
     failLabel->setGeometry(0, 0, width(), height());
     failLabel->show();
-    qDebug() << "DEBUG: 실패 메시지 레이블 설정 완료";
+    qDebug() << "DEBUG: Fail message label setup completed";
     
     // 배경과 텍스트가 포함된 픽스맵 생성
     QPixmap combinedPixmap(width(), height());
@@ -1777,11 +1903,11 @@ void BingoWidget::showFailMessage() {
     
     // 결과물을 레이블에 설정
     failLabel->setPixmap(combinedPixmap);
-    qDebug() << "DEBUG: 슬픈 얼굴 이미지와 FAIL 텍스트 설정 완료";
+    qDebug() << "DEBUG: Sad face image and FAIL text setup completed";
     
     // 5초 후 메시지 숨기고 메인 화면으로 돌아가기 (효과음이 완전히 재생될 때까지 대기)
     QTimer::singleShot(5000, this, &BingoWidget::hideFailAndReset);
-    qDebug() << "DEBUG: 실패 타이머 시작, 5초 후 메시지 사라짐";
+    qDebug() << "DEBUG: Fail timer started, message will disappear after 5 seconds";
     
     // 실패 효과음 재생
     SoundManager::getInstance()->playEffect(SoundManager::FAIL_SOUND);
@@ -1831,16 +1957,73 @@ void BingoWidget::hideFailAndReset() {
 void BingoWidget::setCustomColors(const QList<QColor> &colors) {
     qDebug() << "Setting custom colors to bingo cells";
     
-    if (colors.size() < 9) {
-        qDebug() << "Not enough colors provided. Expected 9, got" << colors.size();
+    // 초기화: 모든 셀을 보너스 아님으로 설정
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            isBonusCell[row][col] = false;
+        }
+    }
+    
+    if (colors.size() < 7) {
+        qDebug() << "Not enough colors provided. Expected at least 7, got" << colors.size();
+        generateRandomColors(); // 충분한 색상이 없으면 전부 랜덤으로
         return;
     }
     
-    int colorIndex = 0;
-    for (int row = 0; row < 3; ++row) {
-        for (int col = 0; col < 3; ++col) {
-            cellColors[row][col] = colors[colorIndex++];
+    // 카메라에서 가져온 색상 7개를 무작위로 배치
+    QList<QColor> mixedColors = colors.mid(0, 7); // 처음 7개 색상을 사용
+    
+    // 2개의 랜덤 색상 생성
+    QList<QColor> randomColors;
+    for(int i = 0; i < 2; ++i) {
+        // 완전 랜덤 색상 생성 (HSV 모델 사용)
+        int hue = QRandomGenerator::global()->bounded(360); // 0-359 색조
+        int saturation = QRandomGenerator::global()->bounded(180, 255); // 선명한 색상을 위해 180-255 채도
+        int value = QRandomGenerator::global()->bounded(180, 255); // 밝은 색상을 위해 180-255 명도
+        
+        QColor randomColor = QColor::fromHsv(hue, saturation, value);
+        randomColors.append(randomColor);
+    }
+    
+    // 전체 색상 목록 준비 (7개 카메라 색상 + 2개 랜덤 색상 = 총 9개)
+    QList<QColor> allColors = mixedColors + randomColors;
+    
+    // 보너스 칸이 아닌 위치를 랜덤화
+    QList<QPair<int, int>> nonBonusCellPositions;
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
+            nonBonusCellPositions.append(qMakePair(row, col));
             
+            // 모든 칸을 일단 보너스 아님으로 초기화
+            isBonusCell[row][col] = false;
+        }
+    }
+    
+    // 위치 섞기
+    for(int i = 0; i < nonBonusCellPositions.size(); ++i) {
+        int j = QRandomGenerator::global()->bounded(nonBonusCellPositions.size());
+        nonBonusCellPositions.swapItemsAt(i, j);
+    }
+    
+    // 섞인 색상 할당 및 보너스 셀 설정
+    // 먼저 일반 색상 7개 배치 (7개 카메라 색상)
+    for(int i = 0; i < 7; ++i) {
+        int row = nonBonusCellPositions[i].first;
+        int col = nonBonusCellPositions[i].second;
+        cellColors[row][col] = allColors[i];
+    }
+    
+    // 랜덤 색상 2개를 보너스 칸에 배치 (마지막 2개 위치에)
+    for(int i = 7; i < 9; ++i) {
+        int row = nonBonusCellPositions[i].first;
+        int col = nonBonusCellPositions[i].second;
+        cellColors[row][col] = allColors[i];
+        isBonusCell[row][col] = true; // 랜덤 색상이 있는 칸을 보너스 칸으로 지정
+    }
+    
+    // 모든 셀에 스타일 적용
+    for(int row = 0; row < 3; ++row) {
+        for(int col = 0; col < 3; ++col) {
             // 경계선 스타일 생성
             QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
             
@@ -1851,15 +2034,169 @@ void BingoWidget::setCustomColors(const QList<QColor> &colors) {
                 borderStyle += " border-right: 1px solid black;";
             }
             
-            // 배경색 적용, 텍스트 제거함
-            bingoCells[row][col]->setText("");
-            bingoCells[row][col]->setStyleSheet(
-                QString("background-color: %1; %2")
-                .arg(cellColors[row][col].name())
-                .arg(borderStyle)
-            );
+            // 보너스 칸인 경우 데이지 꽃 이미지 표시
+            if (isBonusCell[row][col]) {
+                // 데이지 꽃 이미지 생성 - 크기 키움
+                QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
+                
+                // 디버깅: 이미지 생성 확인
+                qDebug() << "Daisy image created - size:" << daisyImage.size() 
+                         << "isNull:" << daisyImage.isNull() 
+                         << "for cell:" << row << col;
+                
+                // 셀에 이미지 설정 (스타일시트 적용 전에 이미지 설정이 필요)
+                bingoCells[row][col]->clear();
+                bingoCells[row][col]->setPixmap(daisyImage);
+                bingoCells[row][col]->setAlignment(Qt::AlignCenter); // 중앙 정렬로 변경
+                bingoCells[row][col]->setScaledContents(false); // 이미지 크기 자동 조정 비활성화
+                        
+                // 배경색과 함께 이미지가 표시되도록 스타일시트 수정
+                QString pixmapStyle = QString("background-color: %1; %2")
+                                   .arg(cellColors[row][col].name())
+                                   .arg(borderStyle);
+                bingoCells[row][col]->setStyleSheet(pixmapStyle);
+                
+                // 이미지 설정 이후에도 보이지 않는 경우를 대비한 추가 설정
+                bingoCells[row][col]->update();
+            } else {
+                bingoCells[row][col]->setText("");
+                bingoCells[row][col]->setPixmap(QPixmap()); // 이미지 제거
+                
+                // 배경색 적용
+                bingoCells[row][col]->setStyleSheet(
+                    QString("background-color: %1; %2")
+                    .arg(cellColors[row][col].name())
+                    .arg(borderStyle)
+                );
+            }
         }
     }
+}
+
+// updateCellStyle 함수 수정: 셀이 선택되거나 X 표시가 나타날 때 데이지 꽃 이미지가 사라지도록 함
+void BingoWidget::updateCellStyle(int row, int col) {
+    // 경계선 스타일 생성
+    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+
+    if (row == 2) {
+        borderStyle += " border-bottom: 1px solid black;";
+    }
+    if (col == 2) {
+        borderStyle += " border-right: 1px solid black;";
+    }
+
+    // 기본 스타일 적용
+    QString style = QString("background-color: %1; %2")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
+
+    bingoCells[row][col]->setStyleSheet(style);
+
+    if (bingoStatus[row][col]) {
+        // 곰돌이 이미지 적용 - 더 크게 스케일링
+        QPixmap scaledBear = bearImage.scaled(
+            bingoCells[row][col]->width() - 20,  // 여백 축소 (30→20)
+            bingoCells[row][col]->height() - 20, // 여백 축소 (30→20)
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+
+        // 텍스트 지우고 이미지 설정
+        bingoCells[row][col]->clear();
+        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+
+        // 내부 여백을 균등하게 설정하여 정확히 중앙 정렬
+        int margin = 10; // 여백 축소 (15→10)
+        bingoCells[row][col]->setContentsMargins(margin, margin, margin, margin);
+
+        bingoCells[row][col]->setPixmap(scaledBear);
+    } else {
+        // 이미지와 텍스트 모두 지우기
+        bingoCells[row][col]->clear();
+        bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);
+        
+        // 보너스 칸인 경우 데이지 꽃 이미지 다시 표시
+        if (isBonusCell[row][col]) {
+            QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
+            
+            // 디버깅: updateCellStyle에서 이미지 생성 확인
+            qDebug() << "updateCellStyle: Daisy image created - size:" << daisyImage.size() 
+                     << "isNull:" << daisyImage.isNull() 
+                     << "for cell:" << row << col;
+            
+            bingoCells[row][col]->clear();
+            bingoCells[row][col]->setPixmap(daisyImage);
+            bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+            bingoCells[row][col]->setScaledContents(false); // 이미지 크기 자동 조정 비활성화
+            
+            // 배경색과 함께 이미지가 표시되도록 스타일시트 수정
+            QString pixmapStyle = QString("background-color: %1; %2")
+                               .arg(cellColors[row][col].name())
+                               .arg(borderStyle);
+            bingoCells[row][col]->setStyleSheet(pixmapStyle);
+            
+            // 이미지 설정 이후에도 보이지 않는 경우를 대비한 추가 설정
+            bingoCells[row][col]->update();
+        } else {
+            // 보너스 셀이 아닌 경우 기본 스타일만 적용
+            bingoCells[row][col]->setStyleSheet(style);
+        }
+    }
+}
+
+// 보너스 메시지 표시 함수
+void BingoWidget::showBonusMessage() {
+    // QPixmap을 사용하여 테두리가 있는 텍스트 생성
+    QPixmap bonusPixmap(width(), height());
+    bonusPixmap.fill(Qt::transparent);  // 배경을 투명하게 설정
+    
+    QPainter painter(&bonusPixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);  // 부드러운 텍스트를 위해
+    
+    // 텍스트 설정
+    QFont bonusFont = painter.font();
+    bonusFont.setPointSize(72);
+    bonusFont.setBold(true);
+    painter.setFont(bonusFont);
+    
+    // 텍스트 크기 계산
+    QFontMetrics fm(bonusFont);
+    QRect textRect = fm.boundingRect("BONUS!");
+    
+    // 텍스트 중앙 위치 계산
+    int x = (width() - textRect.width()) / 2;
+    int y = (height() - textRect.height()) / 2 + fm.ascent();
+    
+    // 테두리 그리기 (여러 방향으로 오프셋하여 검은색 테두리 효과 생성)
+    painter.setPen(Qt::black);
+    for (int offsetX = -3; offsetX <= 3; offsetX++) {
+        for (int offsetY = -3; offsetY <= 3; offsetY++) {
+            // 가장자리 부분만 그리기 (중앙은 건너뛰기)
+            if (abs(offsetX) > 1 || abs(offsetY) > 1) {
+                painter.drawText(x + offsetX, y + offsetY, "BONUS!");
+            }
+        }
+    }
+    
+    // 실제 텍스트 그리기 (파란색으로 변경 - Single Game 버튼 배경색)
+    painter.setPen(QColor(50, 120, 220));  // 파란색
+    painter.drawText(x, y, "BONUS!");
+    
+    painter.end();
+    
+    // 메시지 레이블 크기 설정 (전체 위젯 크기로)
+    bonusMessageLabel->setGeometry(0, 0, width(), height());
+    bonusMessageLabel->setPixmap(bonusPixmap);  // 생성한 픽스맵 설정
+    bonusMessageLabel->raise(); // 다른 위젯 위에 표시
+    bonusMessageLabel->show();
+    
+    // 2초 후 메시지 숨기기 (1초에서 2초로 변경)
+    bonusMessageTimer->start(2000);
+}
+
+// 보너스 메시지 숨기기 함수
+void BingoWidget::hideBonusMessage() {
+    bonusMessageLabel->hide();
 }
 
 // 원 오버레이 생성 함수 구현
