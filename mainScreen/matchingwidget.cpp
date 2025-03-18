@@ -6,9 +6,27 @@ MatchingWidget::MatchingWidget(QWidget *parent)
 {
     //bingoWidget = new BingoWidget(this);
     p2p = P2PNetwork::getInstance();
-    statusLabel = new QLabel("🔄 Waiting for match...", this);
+    statusLabel = new QLabel("Waiting for match...", this);
+    statusLabel->setAlignment(Qt::AlignCenter);
+    statusLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: #333;");
+
+    bearLeftLabel = new QLabel(this);
+    bearRightLabel = new QLabel(this);
+    QPixmap bearPixmap = PixelArtGenerator::getInstance()->createBearImage();
+    bearPixmap = bearPixmap.scaled(50, 50, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    bearLeftLabel->setPixmap(bearPixmap);
+    bearRightLabel->setPixmap(bearPixmap);
+
+    statusLayout = new QHBoxLayout();
+    statusLayout->setAlignment(Qt::AlignCenter);
+    statusLayout->addWidget(bearLeftLabel);
+    statusLayout->addWidget(statusLabel);
+    statusLayout->addWidget(bearRightLabel);
+
     layout = new QVBoxLayout(this);
-    layout->addWidget(statusLabel);
+    layout->setSpacing(20);
+    layout->setAlignment(Qt::AlignCenter);
+    layout->addLayout(statusLayout);
     setLayout(layout);
 
     // ✅ 매칭이 완료되면 updateMatchStatus() 실행
@@ -20,7 +38,7 @@ MatchingWidget::~MatchingWidget() {
 }
 
 void MatchingWidget::startMatching() {
-    statusLabel->setText("🔄 Matching...");
+    statusLabel->setText("Matching...");
     p2p->isMatchingActive = true;
     p2p->isMatched = false;
     p2p->startMatching();
