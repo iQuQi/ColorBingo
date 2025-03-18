@@ -1209,12 +1209,20 @@ void BingoWidget::onCaptureButtonClicked() {
         
         // 테두리 추가
         QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-        if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-        if (col == 2) borderStyle += " border-right: 1px solid black;";
+    
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
         
         // 셀에 합성된 이미지 적용
         bingoCells[row][col]->setPixmap(cellBg);
-        bingoCells[row][col]->setStyleSheet(borderStyle);
+        bingoCells[row][col]->setStyleSheet(style);
         
         // 실패 효과음 재생
         SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
@@ -1333,12 +1341,19 @@ void BingoWidget::onSubmitButtonClicked() {
         
         // 테두리 추가
         QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-        if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-        if (col == 2) borderStyle += " border-right: 1px solid black;";
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                .arg(cellColors[row][col].name())
+                .arg(borderStyle);
         
         // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
         bingoCells[row][col]->setPixmap(cellBg);
-        bingoCells[row][col]->setStyleSheet(borderStyle);
+        bingoCells[row][col]->setStyleSheet(style);
         
         // 실패 효과음 재생
         SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
@@ -1388,100 +1403,43 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
     qDebug() << "Color match processing - Color distance: " << distance;
     qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
     qDebug() << "Matched color: " << colorToMatch.red() << "," << colorToMatch.green() << "," << colorToMatch.blue();
-
-    // 색상 유사도에 따라 처리
-    if (distance <= THRESHOLD) {  // 색상이 유사함 - 빙고 처리
-        qDebug() << "Color match successful! Processing bingo";
-        bingoStatus[row][col] = true;
-        updateCellStyle(row, col);
+    qDebug() << "Color match successful! Processing bingo";
+    bingoStatus[row][col] = true;
+    updateCellStyle(row, col);
+    
+    // 정답 소리 재생 추가
+    SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
+    
+    // 선택 초기화
+    selectedCell = qMakePair(-1, -1);
+    
+    // 빙고 점수 업데이트
+    updateBingoScore();
+    
+    // 상태 메시지 업데이트
+    statusMessageLabel->setText("Great job! Perfect color match!");
+    
+    // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
+    if (isCapturing) {
+        // 카메라 캡처 중지
+        camera->stopCapturing();
+        isCapturing = false;
         
-        // 정답 소리 재생 추가
-        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
-        
-        // 선택 초기화
-        selectedCell = qMakePair(-1, -1);
-        
-        // 빙고 점수 업데이트
-        updateBingoScore();
-        
-        // 상태 메시지 업데이트
-        statusMessageLabel->setText("Great job! Perfect color match!");
-        
-        // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
-        if (isCapturing) {
-            // 카메라 캡처 중지
-            camera->stopCapturing();
-            isCapturing = false;
-            
-            // 재시작 타이머 중지
-            if (cameraRestartTimer) {
-                cameraRestartTimer->stop();
-            }
-            
-            // 카메라 뷰에 메시지 표시
-            if (cameraView) {
-                cameraView->setText("Camera is off");
-                cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
-            }
-            
-            // 슬라이더 위젯 숨김
-            if (sliderWidget) {
-                sliderWidget->hide();
-            }
+        // 재시작 타이머 중지
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
         }
-    } else {  // 색상이 다름 - X 표시 (개선된 코드)
-        qDebug() << "Color match failed - drawing X mark";
         
-        // 셀 자체에 X 표시 그리기
-        QPixmap cellBg(bingoCells[row][col]->size());
-        cellBg.fill(cellColors[row][col]);
-        
-        // X 이미지 준비 - 셀 크기에 맞게 스케일링
-        QPixmap scaledX = xImage.scaled(
-            bingoCells[row][col]->width() - 20,
-            bingoCells[row][col]->height() - 20,
-            Qt::KeepAspectRatio,
-            Qt::SmoothTransformation
-        );
-        
-        // 배경에 X 이미지 합성
-        QPainter painter(&cellBg);
-        painter.drawPixmap(
-            (cellBg.width() - scaledX.width()) / 2,
-            (cellBg.height() - scaledX.height()) / 2,
-            scaledX
-        );
-        
-        // 테두리 추가
-        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-        if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-        if (col == 2) borderStyle += " border-right: 1px solid black;";
-        
-        // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
-        bingoCells[row][col]->setPixmap(cellBg);
-        bingoCells[row][col]->setStyleSheet(borderStyle);
-        
-        // 상태 메시지 업데이트
-        statusMessageLabel->setText("The colors don't match. Keep trying!");
-        
-        // 2초 후에 X 표시 제거하고 원래 스타일로 돌려놓기
-        QTimer::singleShot(2000, this, [this, row, col]() {
-            if (row >= 0 && row < 3 && col >= 0 && col < 3) {
-                if (!bingoStatus[row][col]) {
-                    updateCellStyle(row, col);
-                }
-            }
-            statusMessageLabel->setText("Try again or select another cell");
-        });
-        
-        // 실패 효과음 재생
-        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
-        
-        // 기존 타이머가 돌고 있으면 중지하고 새로 시작
-        if (fadeXTimer->isActive()) {
-            fadeXTimer->stop();
+        // 카메라 뷰에 메시지 표시
+        if (cameraView) {
+            cameraView->setText("Camera is off");
+            cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
         }
-        fadeXTimer->start(2000);
+        
+        // 슬라이더 위젯 숨김
+        if (sliderWidget) {
+            sliderWidget->hide();
+        }
     }
 
     capturedColor = QColor();

@@ -1,11 +1,8 @@
 #include "pixelartgenerator.h"
 #include <QDebug>
 #include <cmath>  // 수학 함수 및 상수(M_PI, cos 등)를 위한 헤더 추가
-<<<<<<< HEAD
-=======
 #include <QPainterPath>    // QPainterPath 클래스 사용을 위한 헤더
 #include <QPainterPathStroker>  // QPainterPathStroker 클래스 사용을 위한 헤더
->>>>>>> 7d9eca9 ([feature] Add Special Cell (Bonus/Attack) and Fix Camera Capturing Bug)
 
 // 싱글톤 인스턴스 초기화
 PixelArtGenerator* PixelArtGenerator::instance = nullptr;
