@@ -652,15 +652,13 @@ MainWindow::~MainWindow()
         multiGameWidget = nullptr;
     }
 
+    if(matchingWidget){
+        delete matchingWidget;
+        matchingWidget = nullptr;
+    }
+
     // Clean up sound resources
     SoundManager::getInstance()->cleanup();
     
-    // Main menu and stacked widget will be automatically released by Qt
-    
     qDebug() << "DEBUG: MainWindow destructor completed";
-
-    delete matchingWidget;
-    delete stackedWidget;
-    delete bingoWidget;
-    delete mainMenu;
 }

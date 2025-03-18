@@ -7,10 +7,12 @@
 #include <QFile>
 #include <QSocketNotifier>
 #include <linux/input.h>
-#include "hardwareInterface/webcambutton.h"
 #include <QShowEvent>
 #include <QHideEvent>
+#include "hardwareInterface/webcambutton.h"
 #include "hardwareInterface/SoundManager.h"
+#include "hardwareInterface/accelerometer.h"
+#include <QSettings>
 #include "../../utils/pixelartgenerator.h"
 
 BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
@@ -21,11 +23,15 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     avgGreen(0),
     avgBlue(0),
     showRgbValues(true),
-    selectedCell(-1, -1),
+    selectedCell(qMakePair(-1, -1)),
     bingoCount(0),
     remainingSeconds(120), // 2분 = 120초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
-    cellRgbValueLabel(nullptr)  // 새 RGB 라벨 초기화
+    cellRgbValueLabel(nullptr),  // 새 RGB 라벨 초기화
+    accelerometer(nullptr),  // 가속도계 초기화
+    useTiltMode(false),      // 기본적으로 틸트 모드 비활성화
+    tiltModeCheckBox(nullptr),
+    submitButton(nullptr)
 {
     qDebug() << "BingoWidget constructor started";
     
@@ -215,6 +221,57 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
 
     // 슬라이더 레이아웃을 카메라 레이아웃에 추가
     cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
+    
+    // 틸트 모드 체크박스 생성
+    tiltModeCheckBox = new QCheckBox("Tilt Mode", cameraArea);
+    tiltModeCheckBox->setStyleSheet("QCheckBox { color: black; font-size: 14px; }"
+                                 "QCheckBox::indicator:checked { background-color: #4a86e8; border: 1px solid white; }"
+                                 "QCheckBox::indicator:unchecked { background-color: #666666; border: 1px solid white; }");
+    
+    // 저장된 틸트 모드 상태 불러오기
+    QSettings settings("ColorBingo", "BingoWidget");
+    bool savedTiltMode = settings.value("useTiltMode", false).toBool();
+    tiltModeCheckBox->setChecked(savedTiltMode);
+    useTiltMode = savedTiltMode;
+    
+    // 제출 버튼 생성
+    submitButton = new QPushButton("Submit", cameraArea);
+    submitButton->setFixedSize(100, 30);
+    submitButton->setStyleSheet("QPushButton { background-color: #4a86e8; color: white; "
+                               "border-radius: 6px; font-weight: bold; } "
+                               "QPushButton:hover { background-color: #3a76d8; }");
+    
+    // 체크박스와 버튼을 수평으로 담을 레이아웃 생성
+    QHBoxLayout *tiltControlsHLayout = new QHBoxLayout();
+    tiltControlsHLayout->setContentsMargins(10, 0, 10, 0);
+    tiltControlsHLayout->setSpacing(10); // 위젯 간 간격 제거
+    
+    // 가운데 정렬을 위한 스트레치 추가
+    tiltControlsHLayout->addStretch(1);
+    
+    // 체크박스와 버튼을 추가
+    QWidget *controlsContainer = new QWidget(cameraArea);
+    QHBoxLayout *containerLayout = new QHBoxLayout(controlsContainer);
+    containerLayout->setContentsMargins(0, 0, 0, 0);
+    containerLayout->setSpacing(0);
+    containerLayout->addWidget(tiltModeCheckBox);
+    containerLayout->addWidget(submitButton);
+    
+    // 컨테이너 추가
+    tiltControlsHLayout->addWidget(controlsContainer);
+    
+    // 가운데 정렬을 위한 스트레치 추가
+    tiltControlsHLayout->addStretch(1);
+    
+    // 체크박스와 버튼 레이아웃을 카메라 레이아웃에 직접 추가
+    cameraVLayout->addLayout(tiltControlsHLayout);
+    
+    // 초기에는 Submit 버튼만 숨김
+    submitButton->hide();
+    
+    // 체크박스 상태 변경 시 슬롯 연결
+    connect(tiltModeCheckBox, &QCheckBox::toggled, this, &BingoWidget::onTiltModeCheckBoxToggled);
+    connect(submitButton, &QPushButton::clicked, this, &BingoWidget::onSubmitButtonClicked);
 
     // Add stretch for vertical centering
     cameraVLayout->addStretch(1);
@@ -252,6 +309,38 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     
     // 위젯 컨트롤 신호 연결 - remove RGB checkbox connection
     connect(circleSlider, &QSlider::valueChanged, this, &BingoWidget::onCircleSliderValueChanged);
+    
+    // 신규 컨트롤 신호 연결
+    // 기존 직접 연결을 람다로 변경하여 디바운싱 적용
+    disconnect(tiltModeCheckBox, &QCheckBox::toggled, this, &BingoWidget::onTiltModeCheckBoxToggled);
+    connect(tiltModeCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        // 이미 처리 중이면 무시
+        if (isCheckboxProcessing) {
+            return;
+        }
+        
+        // 처리 중 플래그 설정
+        isCheckboxProcessing = true;
+        
+        // 현재 체크 상태 저장
+        tiltModeCheckBox->setEnabled(false);  // 추가 터치 방지를 위한 일시적 비활성화
+        
+        // 실제 토글 처리는 지연시간 후 실행 (300ms는 일반적인 디바운싱 시간)
+        checkboxDebounceTimer->start(300);
+        connect(checkboxDebounceTimer, &QTimer::timeout, this, [this, checked]() {
+            // 체크박스 활성화 및 이벤트 처리
+            tiltModeCheckBox->setEnabled(true);
+            
+            // onTiltModeCheckBoxToggled 함수 호출 (이 함수에서 QSettings 저장 수행)
+            onTiltModeCheckBoxToggled(checked);
+            
+            isCheckboxProcessing = false;
+            
+            // 원타임 연결 해제
+            disconnect(checkboxDebounceTimer, nullptr, this, nullptr);
+        });
+    });
+    connect(submitButton, &QPushButton::clicked, this, &BingoWidget::onSubmitButtonClicked);
     
     // 카메라 재시작 타이머 설정 (유지)
     cameraRestartTimer = new QTimer(this);
@@ -333,12 +422,74 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     // 타이머 디스플레이 초기화 및 시작
     updateTimerDisplay();
     gameTimer->start();
+    
+    // 슬라이더 최적화 변수 초기화
+    isSliderDragging = false;
+    pendingCircleRadius = circleRadius;
+    
+    // 체크박스 디바운싱 변수 초기화
+    isCheckboxProcessing = false;
+    checkboxDebounceTimer = new QTimer(this);
+    checkboxDebounceTimer->setSingleShot(true);
+    
+    // 슬라이더 업데이트 타이머 설정
+    sliderUpdateTimer = new QTimer(this);
+    sliderUpdateTimer->setSingleShot(true);
+    connect(sliderUpdateTimer, &QTimer::timeout, this, [this]() {
+        // 타이머가 끝나면 원 반지름 값을 업데이트하고 프레임 다시 그리기
+        circleRadius = pendingCircleRadius;
+        updateCameraFrame();
+        isSliderDragging = false;
+    });
+    
+    // 슬라이더의 슬롯 연결 - valueChanged 대신 두 개의 이벤트로 분리
+    disconnect(circleSlider, &QSlider::valueChanged, this, &BingoWidget::onCircleSliderValueChanged);
+    
+    // 슬라이더가 움직이는 동안 빠른 업데이트를 위한 연결
+    connect(circleSlider, &QSlider::sliderPressed, this, [this]() {
+        isSliderDragging = true;
+    });
+    
+    // 슬라이더가 움직이는 동안의 미리보기 업데이트
+    connect(circleSlider, &QSlider::valueChanged, this, [this](int value) {
+        pendingCircleRadius = value;
+        circleValueLabel->setText(QString::number(value));
+        
+        // 미리보기 업데이트 - 기존 카메라 프레임에 원만 다시 그림
+        updateCirclePreview(value);
+        
+        // 타이머 재시작 (디바운싱)
+        sliderUpdateTimer->start(150); // 150ms 후 실제 업데이트
+    });
+    
+    // 슬라이더를 놓았을 때 최종 업데이트
+    connect(circleSlider, &QSlider::sliderReleased, this, [this]() {
+        // 즉시 업데이트
+        circleRadius = pendingCircleRadius;
+        sliderUpdateTimer->stop();
+        updateCameraFrame();
+        isSliderDragging = false;
+    });
+    
     // 웹캠 물리 버튼 초기화 코드 변경
     webcamButton = new WebcamButton(this);
     if (webcamButton->initialize()) {
-        // 버튼 신호 연결
-        connect(webcamButton, &WebcamButton::captureButtonPressed, this, &BingoWidget::onCaptureButtonClicked);
+        // 버튼 신호 연결 - 명시적 연결로 변경하고 디버그 메시지 추가
+        qDebug() << "Connecting WebcamButton signal to BingoWidget slot...";
+        bool connected = connect(webcamButton, &WebcamButton::captureButtonPressed, 
+                       this, &BingoWidget::onCaptureButtonClicked,
+                       Qt::QueuedConnection); // 큐드 연결 방식 사용
+        if (connected) {
+            qDebug() << "WebcamButton signal connected successfully!";
+        } else {
+            qDebug() << "Failed to connect WebcamButton signal!";
+        }
+    } else {
+        qDebug() << "WebcamButton initialization failed";
     }
+    
+    // 가속도계 초기화
+    initializeAccelerometer();
 }
 
 BingoWidget::~BingoWidget() {
@@ -358,6 +509,18 @@ BingoWidget::~BingoWidget() {
         delete successTimer;
     }
     
+    // 슬라이더 업데이트 타이머 정리
+    if (sliderUpdateTimer) {
+        sliderUpdateTimer->stop();
+        delete sliderUpdateTimer;
+    }
+    
+    // 체크박스 디바운싱 타이머 정리
+    if (checkboxDebounceTimer) {
+        checkboxDebounceTimer->stop();
+        delete checkboxDebounceTimer;
+    }
+    
     if (camera) {
         camera->stopCapturing();
         camera->closeCamera();
@@ -367,6 +530,9 @@ BingoWidget::~BingoWidget() {
         gameTimer->stop();
         delete gameTimer;
     }
+    
+    // 가속도계 정리
+    stopAccelerometer();
 }
 
 bool BingoWidget::eventFilter(QObject *obj, QEvent *event) {
@@ -752,6 +918,12 @@ void BingoWidget::updateCameraFrame() {
     // 현재 프레임을 originalFrame에 저장
     originalFrame = frame;
     
+    // 슬라이더 드래그 중이면 미리보기 업데이트만 수행하고 리턴
+    if (isSliderDragging) {
+        updateCirclePreview(pendingCircleRadius);
+        return;
+    }
+    
     // Safety check: verify cameraView is valid
     if (!cameraView) {
         qDebug() << "ERROR: cameraView is null";
@@ -759,7 +931,6 @@ void BingoWidget::updateCameraFrame() {
     }
     
     try {
-        // qDebug() << "Applying color balance adjustment";
         // Apply color balance correction - with safety check
         QImage adjustedFrame;
         try {
@@ -779,6 +950,9 @@ void BingoWidget::updateCameraFrame() {
             cameraView->size(),
             Qt::IgnoreAspectRatio,
             Qt::FastTransformation);
+        
+        // 미리보기 픽스맵 업데이트 (다음 슬라이더 변경시 사용)
+        previewPixmap = scaledPixmap.copy();
         
         // Create a copy of the pixmap for painting
         QPixmap paintPixmap = scaledPixmap;
@@ -942,14 +1116,8 @@ void BingoWidget::handleCameraDisconnect() {
 }
 
 void BingoWidget::onCircleSliderValueChanged(int value) {
-    circleRadius = value;
-    circleValueLabel->setText(QString::number(value));
-    qDebug() << "Circle radius changed to:" << value;
-    
-    // 프레임이 로드된 경우 동그라미 크기 업데이트
-    if (!originalFrame.isNull()) {
-        updateCameraFrame();
-    }
+    // 더 이상 사용되지 않음 - 새 최적화된 구현으로 대체됨
+    // 단, 호환성을 위해 함수는 유지
 }
 
 void BingoWidget::restartCamera()
@@ -973,30 +1141,114 @@ void BingoWidget::restartCamera()
 }
 
 void BingoWidget::onCaptureButtonClicked() {
-    if (!isCapturing || selectedCell.first < 0)
-        return;
+    qDebug() << "BingoWidget::onCaptureButtonClicked called!";
     
-    // 현재 선택된 셀 좌표
+    if (!isCapturing || selectedCell.first < 0) {
+        qDebug() << "Capture ignored: Camera not capturing or no cell selected";
+        return;
+    }
+    
     int row = selectedCell.first;
     int col = selectedCell.second;
     
-    // 선택된 셀이 이미 빙고 상태이면 무시
     if (bingoStatus[row][col])
         return;
     
+    capturedColor = QColor(avgRed, avgGreen, avgBlue);
+    
+    qDebug() << "Capture button clicked - 캡처된 색상: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
+    
+    if (isCapturing) {
+        camera->stopCapturing();
+        isCapturing = false;
+        
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
+        }
+    }
+    
+    if (useTiltMode) {
+        submitButton->show();
+        tiltAdjustedColor = capturedColor;
+        updateTiltColorDisplay(capturedColor);
+        statusMessageLabel->setText("기기를 기울여 색상을 조정한 후 제출 버튼을 누르세요");
+    } else {
+        processColorMatch(capturedColor);
+    }
+}
+
+// 제출 버튼 클릭 처리 함수
+void BingoWidget::onSubmitButtonClicked() {
+    // 선택된 셀이 없거나 캡처된 색상이 없으면 무시
+    if (selectedCell.first < 0 || !capturedColor.isValid())
+        return;
+    
+    // 틸트로 조정된 색상으로 색상 매치 처리
+    processColorMatch(tiltAdjustedColor);
+    
+    // 상태 초기화
+    capturedColor = QColor(); // 유효하지 않은 색상으로 초기화
+    tiltAdjustedColor = QColor();
+    
+    // 제출 버튼 숨김
+    submitButton->hide();
+
+    // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
+    if (isCapturing) {
+        // 카메라 캡처 중지
+        camera->stopCapturing();
+        isCapturing = false;
+        
+        // 재시작 타이머 중지
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
+        }
+        
+        // 카메라 뷰에 메시지 표시
+        if (cameraView) {
+            cameraView->setText("Camera is off");
+            cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
+        }
+        
+        // 슬라이더 위젯 숨김
+        if (sliderWidget) {
+            sliderWidget->hide();
+        }
+    }
+}
+
+// 색상 매치 처리 함수 (기존 onCaptureButtonClicked 코드 일부 분리)
+void BingoWidget::processColorMatch(const QColor &colorToMatch) {
+    qDebug() << "processColorMatch: 함수 시작, selectedCell:" << selectedCell.first << "," << selectedCell.second;
+    
+    if (selectedCell.first < 0) {
+        qDebug() << "processColorMatch: 선택된 셀이 없음, 함수 종료";
+        return;
+    }
+    
+    int row = selectedCell.first;
+    int col = selectedCell.second;
+    
+    qDebug() << "processColorMatch: 선택된 셀 좌표: row=" << row << ", col=" << col;
+    
+    // 선택된 셀이 이미 빙고 상태이면 무시
+    if (bingoStatus[row][col]) {
+        qDebug() << "processColorMatch: 이미 빙고 상태인 셀, 함수 종료";
+        return;
+    }
+    
     // RGB 값 확인
     QColor selectedColor = cellColors[row][col];
-    QColor capturedColor(avgRed, avgGreen, avgBlue);
     
     // 색상 거리 계산
-    int distance = colorDistance(selectedColor, capturedColor);
+    int distance = colorDistance(selectedColor, colorToMatch);
     
     // 디버그 로그 추가
-    qDebug() << "Capture button clicked - Color distance: " << distance;
+    qDebug() << "Color match processing - Color distance: " << distance;
     qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
-    qDebug() << "Captured color: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
+    qDebug() << "Matched color: " << colorToMatch.red() << "," << colorToMatch.green() << "," << colorToMatch.blue();
     
-    // 색상 유사도 임계값 (updateCameraFrame과 동일하게 20으로 설정)
+    // 색상 유사도 임계값
     const int THRESHOLD = 30;
     
     // 색상 유사도에 따라 처리
@@ -1092,6 +1344,8 @@ void BingoWidget::onCaptureButtonClicked() {
         // 실패 효과음 재생
         SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
     }
+
+    capturedColor = QColor();
 }
 
 void BingoWidget::clearXMark() {
@@ -1697,4 +1951,273 @@ void BingoWidget::updateCellRgbLabel(const QColor &color) {
         cellRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
                                        .arg(r).arg(g).arg(b).arg(textColor));
     }
+}
+
+// 가속도계 초기화 함수 구현
+void BingoWidget::initializeAccelerometer() {
+    // 이미 초기화된 경우 정리
+    if (accelerometer) {
+        stopAccelerometer();
+    }
+    
+    // 새 가속도계 객체 생성
+    accelerometer = new Accelerometer(this);
+    
+    // 가속도계 초기화
+    if (!accelerometer->initialize()) {
+        qDebug() << "Accelerometer initialization failed";
+        delete accelerometer;
+        accelerometer = nullptr;
+        return;
+    }
+    
+    // 가속도계 데이터 변경 신호 연결
+    connect(accelerometer, &Accelerometer::accelerometerDataChanged,
+            this, &BingoWidget::handleAccelerometerDataChanged);
+    
+    qDebug() << "Accelerometer initialized successfully";
+}
+
+// 가속도계 정리 함수 구현
+void BingoWidget::stopAccelerometer() {
+    if (accelerometer) {
+        // 가속도계 신호 연결 해제
+        disconnect(accelerometer, &Accelerometer::accelerometerDataChanged,
+                  this, &BingoWidget::handleAccelerometerDataChanged);
+        
+        // 메모리 해제
+        delete accelerometer;
+        accelerometer = nullptr;
+    }
+}
+
+// 가속도계 데이터 변경 처리 함수
+void BingoWidget::handleAccelerometerDataChanged(const AccelerometerData &data) {
+    // 틸트 모드가 활성화되어 있고 캡처된 색상이 있을 때만 처리
+    if (!useTiltMode || !capturedColor.isValid()) {
+        return;
+    }
+    
+    // 캡처된 색상이 있으면 틸트 값에 따라 색상 조정
+    // 색상 조정
+    tiltAdjustedColor = adjustColorByTilt(capturedColor, data);
+    
+    // 조정된 색상을 카메라 뷰에 표시
+    updateTiltColorDisplay(tiltAdjustedColor);
+}
+
+// 틸트 색상 표시 업데이트 함수 (기존 updateTiltColorLabel 대체)
+void BingoWidget::updateTiltColorDisplay(const QColor &color) {
+    if (cameraView) {
+        // 카메라 중지 상태를 저장
+        bool wasCameraStopped = !isCapturing;
+        
+        // 카메라 뷰의 크기에 맞는 픽스맵 생성
+        QPixmap colorPixmap(cameraView->width(), cameraView->height());
+        colorPixmap.fill(color);
+        
+        // 가운데에 RGB 값 표시
+        QPainter painter(&colorPixmap);
+        
+        // 밝기에 따라 텍스트 색상 결정
+        bool isBright = isColorBright(color);
+        QColor textColor = isBright ? Qt::black : Qt::white;
+        
+        // 큰 폰트로 RGB 값 표시
+        QFont font = painter.font();
+        font.setPointSize(16);
+        font.setBold(true);
+        painter.setFont(font);
+        painter.setPen(textColor);
+        
+        QString rgbText = QString("R: %1  G: %2  B: %3\n\nTilt the device").arg(color.red()).arg(color.green()).arg(color.blue());
+        
+        // 텍스트를 가운데에 그림
+        painter.drawText(colorPixmap.rect(), Qt::AlignCenter, rgbText);
+        
+        // 카메라 RGB 값 레이블도 업데이트
+        if (cameraRgbValueLabel) {
+            cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(color.red()).arg(color.green()).arg(color.blue()));
+            
+            // 밝기에 따라 텍스트 색상 결정
+            QString textColor = (color.red() + color.green() + color.blue() > 380) ? "black" : "white";
+            
+            // 스타일시트 설정 (둥근 모서리 유지)
+            cameraRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                             .arg(color.red()).arg(color.green()).arg(color.blue()).arg(textColor));
+        }
+        
+        // 카메라 뷰에 픽스맵 설정
+        cameraView->setPixmap(colorPixmap);
+        
+        // 슬라이더 핸들 색상도 업데이트
+        if (circleSlider) {
+            // 슬라이더 핸들 색상을 현재 RGB 값으로 설정
+            circleSlider->setStyleSheet(QString(
+                "QSlider::groove:horizontal {"
+                "    border: 1px solid #999999;"
+                "    height: 8px;"
+                "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
+                "    margin: 2px 0;"
+                "    border-radius: 4px;"
+                "}"
+                "QSlider::handle:horizontal {"
+                "    background: rgb(%1, %2, %3);"
+                "    border: 1px solid #5c5c5c;"
+                "    width: 18px;"
+                "    margin: -6px 0;"
+                "    border-radius: 9px;"
+                "}"
+                "QSlider::handle:horizontal:hover {"
+                "    background: rgb(%4, %5, %6);"
+                "    border: 1px solid #333333;"
+                "}"
+            ).arg(color.red()).arg(color.green()).arg(color.blue())
+             .arg(qMin(color.red() + 20, 255)).arg(qMin(color.green() + 20, 255)).arg(qMin(color.blue() + 20, 255)));
+        }
+        
+        // Circle 슬라이더 값 라벨 색상도 함께 업데이트
+        if (circleValueLabel) {
+            circleValueLabel->setStyleSheet(QString(
+                "background-color: rgb(%1, %2, %3);"
+                "color: %4;"
+                "border-radius: 10px;"
+                "padding: 3px 8px;"
+                "min-width: 30px;"
+                "font-weight: bold;"
+            ).arg(color.red()).arg(color.green()).arg(color.blue()).arg(isBright ? "black" : "white"));
+        }
+    }
+}
+
+// 틸트 모드 체크박스 토글 함수
+void BingoWidget::onTiltModeCheckBoxToggled(bool checked) {
+    useTiltMode = checked;
+    qDebug() << "Tilt mode:" << (useTiltMode ? "활성화" : "비활성화");
+    
+    // 설정 저장
+    QSettings settings("ColorBingo", "BingoWidget");
+    settings.setValue("useTiltMode", useTiltMode);
+    settings.sync(); // 즉시 저장
+    qDebug() << "Tilt mode setting saved:" << useTiltMode;
+    
+    // 틸트 모드가 활성화되고 캡처된 색상이 있으면 제출 버튼 표시
+    if (useTiltMode && capturedColor.isValid()) {
+        submitButton->show();
+        tiltAdjustedColor = capturedColor; // 초기에는 조정 전과 동일
+        updateTiltColorDisplay(capturedColor);
+        
+        // 상태 메시지 업데이트
+        statusMessageLabel->setText("기기를 기울여 색상을 조정한 후 제출 버튼을 누르세요");
+    } 
+    // 틸트 모드가 비활성화되면 제출 버튼 숨김
+    else if (!useTiltMode) {
+        submitButton->hide();
+        
+        // 캡처된 색상이 있으면 원래 색상으로 색상 매칭 즉시 처리
+        if (capturedColor.isValid()) {
+            qDebug() << "틸트 모드 비활성화: 기존 캡처된 색상으로 즉시 매칭 처리";
+            // 원래 캡처된 색상으로 매칭 처리
+            processColorMatch(capturedColor);
+            
+            // 상태 초기화 (onSubmitButtonClicked와 동일한 로직)
+            capturedColor = QColor(); // 유효하지 않은 색상으로 초기화
+            tiltAdjustedColor = QColor();
+            
+            // 카메라 재시작 시도 (필요한 경우)
+            if (!isCapturing) {
+                startCamera();
+            }
+        } else {
+            // 캡처된 색상이 없는 경우 메시지만 업데이트
+            statusMessageLabel->setText("Please select a cell and capture a color");
+        }
+    }
+}
+
+// 색상을 기울기에 따라 조정하는 함수
+QColor BingoWidget::adjustColorByTilt(const QColor &color, const AccelerometerData &tiltData) {
+    // HSV 색상 모델로 변환
+    int h, s, v;
+    color.getHsv(&h, &s, &v);
+    
+    // X축 기울기에 따라 채도(Saturation) 조정 (좌우 기울기)
+    // 일반적으로 가속도계는 기기가 평평할 때 0에 가까운 값, 기울일 때 양수 또는 음수
+    int tiltX = tiltData.x;
+    
+    // x축 틸트에 따른 채도 조정 계수 (범위를 조정하기 위한 매핑)
+    // 기울기 범위(-2000~2000)를 채도 조정 범위로 매핑 - 계수 증가
+    double saturationAdjustment = tiltX / 4.0;  // 20.0에서 8.0으로 변경하여 약 2.5배 더 민감하게
+    
+    // 새 채도 계산 (범위를 0-255 내로 유지)
+    int newSaturation = qBound(0, s + static_cast<int>(saturationAdjustment), 255);
+    
+    // Y축 기울기에 따라 명도(Value) 조정 (앞뒤 기울기)
+    int tiltY = tiltData.y;
+    
+    // y축 틸트에 따른 명도 조정 계수 - 계수 증가
+    double valueAdjustment = tiltY / 6.0;  // 30.0에서 12.0으로 변경하여 약 2.5배 더 민감하게
+    
+    // 새 명도 계산 (범위를 0-255 내로 유지)
+    int newValue = qBound(0, v + static_cast<int>(valueAdjustment), 255);
+    
+    // 색상(Hue)은 유지하고 채도와 명도만 조정된 새 색상 반환
+    return QColor::fromHsv(h, newSaturation, newValue);
+}
+
+// 원 미리보기만 빠르게 업데이트하는 함수
+void BingoWidget::updateCirclePreview(int radius) {
+    // 원본 프레임이 없으면 리턴
+    if (originalFrame.isNull() || !cameraView) {
+        return;
+    }
+    
+    // 기존의 미리보기 픽스맵이 없거나 크기가 다르면 새로 생성
+    if (previewPixmap.isNull() || previewPixmap.width() != cameraView->width() || 
+        previewPixmap.height() != cameraView->height()) {
+        
+        // 원래 프레임으로부터 미리보기 픽스맵 생성 (최초 1회만 실행)
+        QImage adjustedFrame;
+        // try {
+        //     adjustedFrame = adjustColorBalance(originalFrame);
+        //     if (adjustedFrame.isNull()) {
+        //         adjustedFrame = originalFrame;
+        //     }
+        // } catch (...) {
+            adjustedFrame = originalFrame;
+        // }
+        
+        previewPixmap = QPixmap::fromImage(adjustedFrame).scaled(
+            cameraView->size(),
+            Qt::IgnoreAspectRatio,
+            Qt::FastTransformation);
+    }
+    
+    // 미리보기 픽스맵 복사본 생성 (원본 유지)
+    QPixmap tempPixmap = previewPixmap.copy();
+    
+    // 원 그리기
+    QPainter painter(&tempPixmap);
+    if (!painter.isActive()) {
+        return;
+    }
+    
+    painter.setRenderHint(QPainter::Antialiasing);
+    
+    // 원 중심과 반지름 계산
+    int centerX = tempPixmap.width() / 2;
+    int centerY = tempPixmap.height() / 2;
+    int drawRadius = (tempPixmap.width() * radius) / 100;
+    
+    // 현재 RGB 값으로 원 색상 설정
+    QPen pen(QColor(avgRed, avgGreen, avgBlue));
+    pen.setWidth(5);
+    painter.setPen(pen);
+    
+    // 원 그리기
+    painter.drawEllipse(QPoint(centerX, centerY), drawRadius, drawRadius);
+    painter.end();
+    
+    // 카메라 뷰에 미리보기 표시
+    cameraView->setPixmap(tempPixmap);
 }

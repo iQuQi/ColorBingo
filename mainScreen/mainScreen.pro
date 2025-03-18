@@ -27,6 +27,7 @@ SOURCES += main.cpp\
     ui/widgets/multigamewidget.cpp \
     hardwareInterface/webcambutton.cpp \
     hardwareInterface/v4l2camera.cpp \
+    hardwareInterface/accelerometer.cpp \
     p2pnetwork.cpp \
     matchingwidget.cpp \
     hardwareInterface/SoundManager.cpp \
@@ -39,6 +40,7 @@ HEADERS  += mainwindow.h \
     ui/widgets/multigamewidget.h \
     hardwareInterface/v4l2camera.h \
     hardwareInterface/webcambutton.h \
+    hardwareInterface/accelerometer.h \
     matchingwidget.h \
     p2pnetwork.h \
     hardwareInterface/SoundManager.h \

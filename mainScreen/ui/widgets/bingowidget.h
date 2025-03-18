@@ -24,6 +24,7 @@
 #include "hardwareInterface/v4l2camera.h"
 #include "hardwareInterface/webcambutton.h"
 #include "../../utils/pixelartgenerator.h"
+#include "hardwareInterface/accelerometer.h"
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -64,6 +65,10 @@ private slots:
     void restartCamera();
     void onBackButtonClicked();
     void updateRgbValues();
+    
+    void onTiltModeCheckBoxToggled(bool checked);
+    void onSubmitButtonClicked();
+    void handleAccelerometerDataChanged(const AccelerometerData &data);
 
 private:
     // 빙고 관련 함수들
@@ -83,6 +88,15 @@ private:
     
     // 원 내부 픽셀의 RGB 평균값 계산 함수
     void calculateAverageRGB(const QImage &image, int centerX, int centerY, int radius);
+    
+    // 가속도계 관련 함수 추가
+    void initializeAccelerometer();
+    void stopAccelerometer();
+    QColor adjustColorByTilt(const QColor &color, const AccelerometerData &tiltData);
+    void updateTiltColorDisplay(const QColor &color);
+    
+    // 색상 매치 처리 함수
+    void processColorMatch(const QColor &colorToMatch);
     
     // 카메라 관련 상태 변수
     bool isCapturing;           // 카메라 캡처 중인지 여부
@@ -164,6 +178,16 @@ private:
     QLabel* failLabel;
 
     QWidget* sliderWidget;  // Circle slider container widget
+    
+    // 슬라이더 최적화 관련 변수
+    QTimer* sliderUpdateTimer;  // 슬라이더 디바운싱용 타이머
+    bool isSliderDragging;      // 슬라이더 드래그 중 여부
+    int pendingCircleRadius;    // 대기 중인 원 반지름 값
+    QPixmap previewPixmap;      // 미리보기용 픽스맵
+    
+    // 체크박스 디바운싱 관련 변수
+    QTimer* checkboxDebounceTimer;  // 체크박스 디바운싱용 타이머
+    bool isCheckboxProcessing;      // 체크박스 처리 중 여부
 
     // 전달받은 색상 설정하는 메서드 추가
     void setCustomColors(const QList<QColor> &colors);
@@ -186,6 +210,19 @@ private:
     QLabel *cellRgbValueLabel;
 
     void updateCellRgbLabel(const QColor &color);
+    
+    // 가속도계 관련 멤버 변수
+    Accelerometer *accelerometer; // 가속도계 객체
+    bool useTiltMode;           // 틸트 모드 사용 여부
+    QColor capturedColor;       // 캡처된 색상
+    QColor tiltAdjustedColor;   // 틸트로 조절된 색상
+    
+    // 새로 추가된 UI 요소
+    QCheckBox *tiltModeCheckBox; // 틸트 모드 체크박스
+    QPushButton *submitButton;  // 제출 버튼
+    
+    // 원 미리보기 함수 추가
+    void updateCirclePreview(int radius);
 };
 
 #endif // BINGOWIDGET_H
