@@ -108,8 +108,8 @@ void V4L2Camera::initDevice()
     // Set video format
     CLEAR(fmt);
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width = 800;
-    fmt.fmt.pix.height = 600;
+    fmt.fmt.pix.width = 640;
+    fmt.fmt.pix.height = 480;
     fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
     fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
 
@@ -466,13 +466,13 @@ void V4L2Camera::yuv422ToRgb888(const void *yuv, QImage &rgbImage)
             int B1 = Y1 + table_Cb_blue[U];
             
             // 색상 보정: 붉은기 약간 증가
-            R0 = qBound(0, (int)(R0 * 1.25), 255);   // 빨간색 25% 증가
-            G0 = qBound(0, (int)(G0 * 0.85), 255);   // 녹색 15% 감소
-            B0 = qBound(0, (int)(B0 * 0.85), 255);   // 파란색 15% 감소
+            R0 = qBound(0, (int)(R0), 255);   // 빨간색 25% 증가
+            G0 = qBound(0, (int)(G0), 255);   // 녹색 15% 감소
+            B0 = qBound(0, (int)(B0), 255);   // 파란색 15% 감소
             
-            R1 = qBound(0, (int)(R1 * 1.25), 255);   // 빨간색 25% 증가
-            G1 = qBound(0, (int)(G1 * 0.85), 255);   // 녹색 15% 감소
-            B1 = qBound(0, (int)(B1 * 0.85), 255);   // 파란색 15% 감소
+            R1 = qBound(0, (int)(R1), 255);   // 빨간색 25% 증가
+            G1 = qBound(0, (int)(G1), 255);   // 녹색 15% 감소
+            B1 = qBound(0, (int)(B1), 255);   // 파란색 15% 감소
             
             // 픽셀 설정
             rgbImage.setPixel(j * 2, i, qRgb(R0, G0, B0));

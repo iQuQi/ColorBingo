@@ -18,6 +18,8 @@ public:
     QPixmap createSadFacePixelArt(int size = 100);
     QPixmap createXImage(int size = 100);
     QPixmap createVolumeImage(int volumeLevel, int size = 40);
+    QPixmap createDaisyFlowerImage(int size = 40);
+    QPixmap createCuteDevilImage(int size = 40);
     
     // 픽셀 스타일 버튼 생성 함수
     QString createPixelButtonStyle(const QColor &baseColor, int borderWidth = 4, int borderRadius = 12);

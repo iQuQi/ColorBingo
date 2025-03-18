@@ -160,8 +160,8 @@ void MainWindow::setupMainScreen()
     // Title label
     QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
     titleLabel->setAlignment(Qt::AlignCenter);
-    // 더 귀여운 스타일로 타이틀 폰트 수정 - 폰트 크기 더 증가 및 그림자 효과 추가
-    titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px; text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);");
+    // 더 귀여운 스타일로 타이틀 폰트 수정 - 폰트 크기 더 증가 및 그림자 효과 제거
+    titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px;");
     
     // Right bear image label
     QLabel *rightBearLabel = new QLabel(centerWidget);

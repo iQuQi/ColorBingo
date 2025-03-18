@@ -105,9 +105,9 @@ QString ButtonReaderThread::findWebcamButtonDevice() {
     // 파일 전체 내용을 로그로 출력 (디버깅용)
     QTextStream logStream(&file);
     QString entireFileContent = logStream.readAll();
-    qDebug() << "==== /proc/bus/input/devices 전체 내용 ====";
+    qDebug() << "==== /proc/bus/input/devices full content ====";
     qDebug().noquote() << entireFileContent;
-    qDebug() << "==== /proc/bus/input/devices 내용 끝 ====";
+    qDebug() << "==== /proc/bus/input/devices content end ====";
     
     // 파일 포인터를 다시 처음으로 되돌림
     file.seek(0);

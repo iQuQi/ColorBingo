@@ -26,6 +26,7 @@
 #include "hardwareInterface/webcambutton.h"
 #include "p2pnetwork.h"
 #include "../../utils/pixelartgenerator.h"
+#include <QSet>
 
 class MultiGameWidget : public QWidget {
     Q_OBJECT
@@ -68,6 +69,8 @@ private slots:
     void updateRgbValues();
     void onOpponentDisconnected();
     void onNetworkError();
+    void showAttackMessage();
+    void hideAttackMessage();
 
 private:
     // 빙고 관련 함수들
@@ -193,6 +196,15 @@ private:
 
     // 멤버 변수들
     QPixmap overlayCircle;  // 원형 오버레이 픽스맵 추가
+
+    // 보너스 색상 관련 변수 추가
+    bool isBonusCell[3][3]; // 보너스 칸(완전 랜덤 색상) 여부 추적
+    QSet<QPair<int, int>> countedBonusCells; // 이미 점수 계산에 사용된 보너스 칸
+
+    // 공격 메시지 관련 멤버
+    QLabel *attackMessageLabel; // 공격 메시지 레이블
+    QTimer *attackMessageTimer; // 공격 메시지 타이머
+    bool hadBonusInLastLine;    // 마지막으로 완성한 빙고 라인에 보너스가 있었는지 추적
 };
 
 #endif // MULTIGAMEWIDGET_H

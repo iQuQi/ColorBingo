@@ -25,6 +25,7 @@
 #include "hardwareInterface/webcambutton.h"
 #include "../../utils/pixelartgenerator.h"
 #include "hardwareInterface/accelerometer.h"
+#include <QSet>
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -66,9 +67,10 @@ private slots:
     void onBackButtonClicked();
     void updateRgbValues();
     
-    void onTiltModeCheckBoxToggled(bool checked);
     void onSubmitButtonClicked();
     void handleAccelerometerDataChanged(const AccelerometerData &data);
+    void showBonusMessage();
+    void hideBonusMessage();
 
 private:
     // 빙고 관련 함수들
@@ -155,8 +157,6 @@ private:
     QLabel *successLabel;
 
     QPixmap xImage;
-
-    // bearImage
     QPixmap bearImage;
 
     // 색상 보정 관련 함수
@@ -213,16 +213,28 @@ private:
     
     // 가속도계 관련 멤버 변수
     Accelerometer *accelerometer; // 가속도계 객체
-    bool useTiltMode;           // 틸트 모드 사용 여부
     QColor capturedColor;       // 캡처된 색상
     QColor tiltAdjustedColor;   // 틸트로 조절된 색상
     
-    // 새로 추가된 UI 요소
-    QCheckBox *tiltModeCheckBox; // 틸트 모드 체크박스
+    // UI 요소
     QPushButton *submitButton;  // 제출 버튼
     
     // 원 미리보기 함수 추가
     void updateCirclePreview(int radius);
+
+    const int THRESHOLD = 8;
+    // 보너스 색상 관련 변수 추가
+    bool isBonusCell[3][3]; // 보너스 칸(완전 랜덤 색상) 여부 추적
+    QSet<QPair<int, int>> countedBonusCells; // 이미 점수 계산에 사용된 보너스 칸
+
+    // GameMode gameMode; // 현재 게임 모드 저장 변수 추가
+
+    QList<QColor> captureColorsFromFrame();
+
+    // 보너스 메시지 관련 멤버
+    QLabel *bonusMessageLabel; // 보너스 메시지 레이블
+    QTimer *bonusMessageTimer; // 보너스 메시지 타이머
+    bool hadBonusInLastLine;  // 마지막으로 완성한 빙고 라인에 보너스가 있었는지 추적
 };
 
 #endif // BINGOWIDGET_H
