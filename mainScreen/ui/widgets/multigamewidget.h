@@ -71,6 +71,7 @@ private slots:
     void onNetworkError();
     void showAttackMessage();
     void hideAttackMessage();
+    void attackedByOpponent();
 
 private:
     // 빙고 관련 함수들

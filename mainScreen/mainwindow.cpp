@@ -318,6 +318,7 @@ void MainWindow::showMatchingScreen() {
 
     // ✅ Back 버튼을 눌렀을 때 메인 화면으로 돌아가도록 연결
     connect(matchingWidget, &MatchingWidget::backToMainRequested, this, &MainWindow::showMainMenu);
+    connect(matchingWidget, &MatchingWidget::switchToBingoScreen, this, &MainWindow::showMultiGameScreen);
 
     // ✅ 스택 위젯에 추가하고 매칭 화면으로 전환
     stackedWidget->addWidget(matchingWidget);
@@ -444,7 +445,7 @@ void MainWindow::onCreateMultiGameRequested(const QList<QColor> &colors)
     // 상대방이 아직 준비되지 않았다면 "Waiting for Other Player"
     if (!isOpponentMultiGameReady) {
         qDebug() << "DEBUG: Waiting for other player to be ready";
-        waitingLabel->show();
+        //waitingLabel->show();
     }
 
     checkIfBothPlayersReady();
@@ -455,7 +456,7 @@ void MainWindow::onOpponentMultiGameReady() {
     qDebug() << "✅ Opponent board requested multi-game";
 
     // 상대방이 준비되었으므로 "Waiting for Other Player" 메시지 숨김
-    waitingLabel->hide();
+    //waitingLabel->hide();
 
     // 양쪽 보드가 모두 준비되었는지 확인
     checkIfBothPlayersReady();

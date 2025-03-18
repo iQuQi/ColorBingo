@@ -19,6 +19,7 @@ public:
     void sendBingoScore(int score);
     void sendGameOverMessage();
     void sendMultiGameReady();
+    void sendAttackMessage();
 
     bool isMatchingActive;
     bool isMatched;
@@ -31,6 +32,7 @@ signals:
     void opponentMultiGameReady();
     void opponentDisconnected();
     void networkErrorOccurred();
+    void attackedByOpponent();
 
 private slots:
     void processPendingDatagrams();

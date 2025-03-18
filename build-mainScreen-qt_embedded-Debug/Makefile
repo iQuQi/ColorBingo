@@ -1406,6 +1406,7 @@ moc_matchingwidget.cpp: ../mainScreen/matchingwidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlayout.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlayoutitem.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qgridlayout.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QResizeEvent \
 		../mainScreen/p2pnetwork.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
@@ -3109,6 +3110,7 @@ matchingwidget.o: ../mainScreen/matchingwidget.cpp ../mainScreen/matchingwidget.
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlayout.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qlayoutitem.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qgridlayout.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QResizeEvent \
 		../mainScreen/p2pnetwork.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \

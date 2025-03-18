@@ -459,7 +459,7 @@ void MultiGameWidget::selectCell(int row, int col) {
     // 셀이 선택되었으니 상태 메시지 업데이트
     if (isBonusCell[row][col]) {
         // 보너스 셀인 경우 추가 메시지 표시
-        statusMessageLabel->setText("This is the attack cell. Bingo here changes a random cell on the opponent's board.");
+        statusMessageLabel->setText("This is the attack cell. Bingo here changes a random cell\n on the opponent's board.");
     } else {
         // 일반 셀인 경우 기본 메시지 표시
         statusMessageLabel->setText(QString("Press camera button to match colors").arg(row+1).arg(col+1));
@@ -1297,6 +1297,7 @@ void MultiGameWidget::updateBingoScore() {
     // 보너스 칸을 사용한 빙고가 있었으면 공격 메시지 표시
     if (hadBonusInLastLine) {
         showAttackMessage();
+        network->sendAttackMessage();
     }
 
     // 3빙고 이상 달성 확인
@@ -1908,5 +1909,38 @@ void MultiGameWidget::showAttackMessage() {
 // 공격 메시지 숨기기 함수
 void MultiGameWidget::hideAttackMessage() {
     attackMessageLabel->hide();
+}
+
+void MultiGameWidget::attackedByOpponent() {
+    QVector<QPair<int, int>> availableCells;
+
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            if (!bingoStatus[row][col] && !isBonusCell[row][col]) { // 선택되지 않았고 보너스 셀이 아님
+                       availableCells.append(qMakePair(row, col));
+            }
+
+        }
+    }
+
+    // 선택 가능한 셀이 없다면 아무것도 하지 않음
+    if (availableCells.isEmpty()) return;
+
+    // 랜덤한 셀 선택
+    int randomIndex = QRandomGenerator::global()->bounded(availableCells.size());
+    QPair<int, int> selectedCell = availableCells[randomIndex];
+
+    int attackedRow = selectedCell.first;
+    int attackedCol = selectedCell.second;
+
+    // 랜덤 색 적용
+    int hue = QRandomGenerator::global()->bounded(360); // 0-359 색조
+    int saturation = QRandomGenerator::global()->bounded(180, 255); // 선명한 색상을 위해 180-255 채도
+    int value = QRandomGenerator::global()->bounded(180, 255); // 밝은 색상을 위해 180-255 명도
+
+    QColor randomColor = QColor::fromHsv(hue, saturation, value);
+
+    cellColors[attackedRow][attackedCol] = randomColor;
+
 }
 

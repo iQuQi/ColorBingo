@@ -285,6 +285,20 @@ void P2PNetwork::sendGameOverMessage() {
     }
 }
 
+void P2PNetwork::sendAttackMessage() {
+    QString message = "ATTACK";
+
+    if (isServerMode) {
+        connectedClient->write(message.toUtf8() + "\n");
+        connectedClient->flush();
+        qDebug() << "DEBUG: 📤 Sent ATTACK message to opponent";
+    } else {
+        clientSocket->write(message.toUtf8() + "\n");
+        clientSocket->flush();
+        qDebug() << "DEBUG: 📤 Sent ATTACK message to opponent";
+    }
+}
+
 void P2PNetwork::onDataReceived() {
     qDebug() << "onDataReceived has been called";
     QTcpSocket *senderSocket = qobject_cast<QTcpSocket*>(sender());
@@ -304,6 +318,9 @@ void P2PNetwork::onDataReceived() {
     } else if (message == "CAPTURE_DONE") {
         qDebug() << "DEBUG: 🎯 Opponent has completed capture!";
         emit opponentMultiGameReady();
+    } else if (message == "ATTACK") {
+        qDebug() << "DEBUG: Opponent has attacked!";
+        emit attackedByOpponent();
     }
 }
 
