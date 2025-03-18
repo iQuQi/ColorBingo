@@ -1,4 +1,3 @@
-
 #ifndef BINGOWIDGET_H
 #define BINGOWIDGET_H
 
@@ -24,6 +23,7 @@
 #include <QImage>
 #include "hardwareInterface/v4l2camera.h"
 #include "hardwareInterface/webcambutton.h"
+#include "../../utils/pixelartgenerator.h"
 
 class BingoWidget : public QWidget {
     Q_OBJECT
@@ -107,7 +107,6 @@ private:
     QWidget *cameraArea;
     QGridLayout *gridLayout;
     QVBoxLayout *cameraLayout;
-//    QVBoxLayout *bingoLayout;
     
     // 빙고 관련 위젯
     QLabel *bingoCells[3][3];   // 빙고 셀 레이블
@@ -123,7 +122,6 @@ private:
     // 컨트롤 버튼
     QPushButton *startButton;
     QPushButton *captureButton;  // 캡처 및 중지 버튼으로 역할 변경
-//    QPushButton *backButton;
     
     // 원 표시 관련 위젯
     QSlider *circleSlider;
@@ -146,9 +144,6 @@ private:
 
     // bearImage
     QPixmap bearImage;
-
-    QPixmap createXImage(); // X 이미지 생성 함수
-    QPixmap createBearImage(); // 곰돌이 이미지 생성 함수 추가
 
     // 색상 보정 관련 함수
     QImage adjustColorBalance(const QImage &image);

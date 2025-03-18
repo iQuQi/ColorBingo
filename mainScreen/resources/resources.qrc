@@ -1,13 +1,13 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
-    <qresource>
+    <qresource prefix="/">
+        <file>fonts/ComicNeue-Bold.ttf</file>
+        <file>fonts/ComicNeue-Regular.ttf</file>
+        <file>images/background.jpg</file>
         <file>music/background_sound.wav</file>
         <file>music/correct_sound.wav</file>
         <file>music/fail_sound.wav</file>
         <file>music/incorrect_sound.wav</file>
         <file>music/success_sound.wav</file>
-    </qresource>
-    <qresource>
-        <file>images/background.jpg</file>
     </qresource>
 </RCC> 

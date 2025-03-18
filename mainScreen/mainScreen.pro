@@ -23,24 +23,26 @@ RESOURCES += resources/resources.qrc
 SOURCES += main.cpp\
     mainwindow.cpp \
     ui/widgets/bingowidget.cpp \
-    ui/widgets/colorcapturewidget.cpp \
+    ui/widgets/bingopreparationwidget.cpp \
     ui/widgets/multigamewidget.cpp \
     hardwareInterface/webcambutton.cpp \
     hardwareInterface/v4l2camera.cpp \
     p2pnetwork.cpp \
     matchingwidget.cpp \
-    hardwareInterface/SoundManager.cpp
+    hardwareInterface/SoundManager.cpp \
+    utils/pixelartgenerator.cpp
 
 
 HEADERS  += mainwindow.h \
     ui/widgets/bingowidget.h \
-    ui/widgets/colorcapturewidget.h \
+    ui/widgets/bingopreparationwidget.h \
     ui/widgets/multigamewidget.h \
     hardwareInterface/v4l2camera.h \
     hardwareInterface/webcambutton.h \
     matchingwidget.h \
     p2pnetwork.h \
-    hardwareInterface/SoundManager.h
+    hardwareInterface/SoundManager.h \
+    utils/pixelartgenerator.h
 
 FORMS += mainwindow.ui
 

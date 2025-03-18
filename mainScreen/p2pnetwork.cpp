@@ -139,11 +139,15 @@ void P2PNetwork::disconnectFromPeer() {
 
     // ✅ TCP 클라이언트 소켓 닫기
     if (!isServerMode && clientSocket->state() == QAbstractSocket::ConnectedState) {
-        clientSocket->disconnectFromHost();
-        if (clientSocket->state() != QAbstractSocket::UnconnectedState) {
-            clientSocket->waitForDisconnected(1000);
-        }
-    } else if (server->isListening()) { // ✅ TCP 서버 종료
+        qDebug() << "DEBUG: Closing client socket...";
+        clientSocket->abort();  // ✅ 즉시 연결 해제
+        clientSocket->close();
+    } else if (isServerMode && connectedClient->state() == QAbstractSocket::ConnectedState) {
+        connectedClient->abort();
+        connectedClient->close();
+    }
+
+    if (server->isListening()) { // ✅ TCP 서버 종료
         server->close();
     }
 
@@ -152,19 +156,25 @@ void P2PNetwork::disconnectFromPeer() {
         udpSocket->close();
     }
 
-    // ✅ 매칭 상태 초기화
-    isMatched = false;
-    discoveredBoards.clear();
-
     qDebug() << "DEBUG: ✅ Successfully disconnected!";
 }
 
 void P2PNetwork::onDisconnected() {
-    qDebug() << "⚠️ WARNING: Connection lost! Reconnecting...";
+    qDebug() << "⚠️ WARNING: Connection lost!";
 }
 
 void P2PNetwork::onSocketError(QAbstractSocket::SocketError socketError) {
     qDebug() << "ERROR: ❌ Socket error occurred:" << socketError;
+
+    if (socketError == QAbstractSocket::RemoteHostClosedError) {
+        qDebug() << "DEBUG: 📡 Opponent disconnected! Declaring victory.";
+        emit opponentDisconnected();  // ✅ 상대방이 연결을 끊은 경우
+    } else if (socketError == QAbstractSocket::NetworkError ||
+               socketError == QAbstractSocket::HostNotFoundError ||
+               socketError == QAbstractSocket::ConnectionRefusedError) {
+        qDebug() << "DEBUG: ⚠️ Network issue detected! Returning to main page...";
+        emit networkErrorOccurred();  // ✅ 내 네트워크 문제
+    }
 }
 
 void P2PNetwork::sendMultiGameReady() {

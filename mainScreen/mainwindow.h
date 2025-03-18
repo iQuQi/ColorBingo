@@ -8,18 +8,24 @@
 #include <QColor>
 #include <QPixmap>
 #include <QPushButton>
+#include <QLabel>
 #include "background.h"
-#include "ui/widgets/colorcapturewidget.h"
+#include "ui/widgets/bingopreparationwidget.h"
 #include "ui/widgets/bingowidget.h"
 #include "ui/widgets/multigamewidget.h"
 #include "matchingwidget.h"
+#include "utils/pixelartgenerator.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
     P2PNetwork *network;
@@ -31,7 +37,11 @@ private slots:
     void showMainMenu();
     void onCreateBingoRequested(const QList<QColor> &colors);
     void onCreateMultiGameRequested(const QList<QColor> &colors);
-    void onVolumeButtonClicked();
+
+protected:
+    bool event(QEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+
 
 private:
     bool isLocalMultiGameReady = false;
@@ -43,28 +53,33 @@ private:
     void onOpponentMultiGameReady();
     void setupMainScreen();
     void updateCenterWidgetPosition();
-    bool event(QEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
-    QPixmap createBearImage();
-    QPixmap createVolumeImage(int volumeLevel);
+    
+    // 볼륨 버튼 관련 함수
+    void onVolumeButtonClicked();
     void updateVolumeButton();
     void updateVolumeButtonPosition();
     
     QStackedWidget *stackedWidget;
     QWidget *mainMenu;
-    QWidget *centerWidget = nullptr;
-    ColorCaptureWidget *colorCaptureWidget;
+    QWidget *centerWidget;
+    
+    BingoPreparationWidget *colorCaptureWidget;
     BingoWidget *bingoWidget;
     MultiGameWidget *multiGameWidget;
     MatchingWidget *matchingWidget;
 
+
     QLabel *waitingLabel;
 
+
     
+    // 볼륨 버튼 및 관련 변수
     QPushButton *volumeButton;
-    int volumeLevel;
+    int volumeLevel; // 볼륨 레벨 (1: 낮음, 2: 중간, 3: 높음)
     
+    // 배경 이미지
     QPixmap backgroundImage;
+
 };
 
 #endif // MAINWINDOW_H
