@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include "p2pnetwork.h"
 #include "ui/widgets/bingowidget.h"
+#include "utils/pixelartgenerator.h"
 
 class MatchingWidget : public QWidget {
     Q_OBJECT
@@ -27,7 +28,10 @@ private slots:
 
 private:
     QLabel *statusLabel;
+    QLabel *bearLeftLabel;
+    QLabel *bearRightLabel;
     QVBoxLayout *layout;
+    QHBoxLayout *statusLayout;
 };
 
 #endif // MATCHINGWIDGET_H
