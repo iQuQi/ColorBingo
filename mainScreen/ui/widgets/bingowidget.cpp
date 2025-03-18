@@ -1177,9 +1177,6 @@ void BingoWidget::onCaptureButtonClicked() {
     qDebug() << "Initial color comparison - Distance: " << distance;
     qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
     
-    // 색상 유사도 임계값
-    const int THRESHOLD = 10;
-    
     // 색상이 이미 유사하면 바로 성공 처리
     if (distance <= THRESHOLD) {
         qDebug() << "Immediate color match successful!";
@@ -1375,7 +1372,7 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
             if (row >= 0 && row < 3 && col >= 0 && col < 3) {
                 if (!bingoStatus[row][col]) {
                     updateCellStyle(row, col);
-    }
+                }
             }
             statusMessageLabel->setText("Try again or select another cell");
         });
