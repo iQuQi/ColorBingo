@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QResizeEvent>
 #include "p2pnetwork.h"
 #include "ui/widgets/bingowidget.h"
 #include "utils/pixelartgenerator.h"
@@ -19,12 +20,15 @@ public:
 
     void startMatching();
     void restartMatching();
+    void resizeEvent(QResizeEvent *event) override;
 
 signals:
     void switchToBingoScreen();
+    void backToMainRequested(); // Back 버튼을 눌렀을 때 메인 화면으로 전환하는 시그널
 
 private slots:
     void updateMatchStatus(QString peerIP);
+    void onBackButtonClicked(); // Back button click handler
 
 private:
     QLabel *statusLabel;
@@ -32,6 +36,7 @@ private:
     QLabel *bearRightLabel;
     QVBoxLayout *layout;
     QHBoxLayout *statusLayout;
+    QPushButton *backButton; // back button
 };
 
 #endif // MATCHINGWIDGET_H

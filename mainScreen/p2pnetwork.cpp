@@ -47,25 +47,55 @@ P2PNetwork::P2PNetwork(QObject *parent) : QObject(parent), isMatched(false), isM
 
 // ✅ 랜덤 매칭 시작
 void P2PNetwork::startMatching() {
+//    if (isMatchingActive) {
+//        qDebug() << "DEBUG: Matching is already active. Ignoring startMatching() call.";
+//        return;
+//    }
+
+    qDebug() << "DEBUG: Starting new matching process";
+    isMatchingActive = false;
+    isMatched = false;
+
     discoveredBoards.clear();
     if (udpSocket->state() != QUdpSocket::BoundState) {
         qDebug() << "WARNING: UDP socket is not bound! Attempting to rebind...";
         udpSocket->bind(45454, QUdpSocket::ShareAddress);
         qDebug() << "DEBUG: ✅ UDP socket successfully rebound";
     }
+
     if (!server->isListening()) {
         server->listen(QHostAddress::Any, 50000);
     }
+
+    // ✅ 매칭 요청 타이머가 실행 중인지 확인하고, 실행되지 않으면 강제 실행
+    if (!matchTimer->isActive()) {
+        qDebug() << "DEBUG: matchTimer is not active, starting it now.";
+        isMatchingActive = true;
+    } else {
+        qDebug() << "DEBUG: matchTimer was already running.";
+    }
+
     matchTimer->start(3000);  // 3초마다 매칭 요청 전송
 }
 
 // ✅ "매칭 요청"을 같은 네트워크의 모든 보드에게 전송 (UDP 브로드캐스트)
 void P2PNetwork::sendMatchRequest() {
+    if (!isMatchingActive) {
+        qDebug() << "DEBUG: Matching is not active. Skipping match request.";
+        return;
+    }
+
     QByteArray message = "MATCH_REQUEST";
     udpSocket->writeDatagram(message, QHostAddress::Broadcast, 45454);
     qDebug() << "DEBUG: 📡 Match request sent via broadcast";
     qDebug() << "DEBUG: isMatched: " << isMatched;
     qDebug() << "DEBUG: isMatchingActive: " << isMatchingActive;
+
+    // ✅ 타이머가 계속 실행 중인지 확인
+    if (!matchTimer->isActive()) {
+        qDebug() << "WARNING: matchTimer is not running! Restarting now.";
+        matchTimer->start(3000);
+    }
 }
 
 // ✅ UDP 메시지 수신 → "MATCH_RESPONSE"를 보내는 보드 목록 저장
@@ -152,11 +182,17 @@ QString P2PNetwork::getLocalIPAddress() {
 }
 
 void P2PNetwork::disconnectFromPeer() {
-    qDebug() << "DEBUG: 🔌 Disconnecting from peer...";
+    qDebug() << "DEBUG: Disconnecting from peer...";
 
     isMatched = false;
     isMatchingActive = false;
     discoveredBoards.clear();
+
+    // ✅ 매칭 타이머 중지
+    if (matchTimer->isActive()) {
+        matchTimer->stop();
+        qDebug() << "DEBUG: Match timer stopped.";
+    }
 
     // ✅ TCP 클라이언트 소켓 닫기
     if (!isServerMode) {

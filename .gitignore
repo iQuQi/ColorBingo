@@ -9,3 +9,4 @@ build-mainScreen/**
 # cursorignore 파일
 .cursorignore
 mainScreen/mainScreen.pro.user
+build-mainScreen-qt_embedded-Debug/

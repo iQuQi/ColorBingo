@@ -290,17 +290,43 @@ void MainWindow::showBingoScreen()
 
 
 // 매칭 화면 표시 (멀티게임 버튼 클릭 시, 멀티게임 화면 표시 전)
-void MainWindow::showMatchingScreen() {
-    if (!matchingWidget) {
-         qDebug() << "DEBUG: Creating new MatchingWidget";
-         matchingWidget = new MatchingWidget(this);
-         stackedWidget->addWidget(matchingWidget);
-         connect(matchingWidget, &MatchingWidget::switchToBingoScreen, this, &MainWindow::showMultiGameScreen);
-    }
-    qDebug() << "DEBUG: Multi Game button clicked";
+//void MainWindow::showMatchingScreen() {
+//    if (!matchingWidget) {
+//         qDebug() << "DEBUG: Creating new MatchingWidget";
+//         matchingWidget = new MatchingWidget(this);
+//         stackedWidget->addWidget(matchingWidget);
+//         connect(matchingWidget, &MatchingWidget::switchToBingoScreen, this, &MainWindow::showMultiGameScreen);
+//    }
+//    qDebug() << "DEBUG: Multi Game button clicked";
 
+//    stackedWidget->setCurrentWidget(matchingWidget);
+//}
+void MainWindow::showMatchingScreen() {
+    qDebug() << "DEBUG: Navigating to Matching Screen";
+
+    P2PNetwork::getInstance()->isMatchingActive = false;
+
+    // ✅ 기존 `MatchingWidget`이 있으면 삭제 후 새로 생성
+    if (matchingWidget) {
+        stackedWidget->removeWidget(matchingWidget);
+        delete matchingWidget;
+        matchingWidget = nullptr;
+    }
+
+    // ✅ 새로운 매칭 위젯 생성
+    matchingWidget = new MatchingWidget(this);
+
+    // ✅ Back 버튼을 눌렀을 때 메인 화면으로 돌아가도록 연결
+    connect(matchingWidget, &MatchingWidget::backToMainRequested, this, &MainWindow::showMainMenu);
+
+    // ✅ 스택 위젯에 추가하고 매칭 화면으로 전환
+    stackedWidget->addWidget(matchingWidget);
     stackedWidget->setCurrentWidget(matchingWidget);
+
+    // ✅ 매칭 시작
+//    matchingWidget->startMatching();
 }
+
 
 
 // 멀티게임 화면 표시 (새로 추가)
@@ -525,6 +551,16 @@ void MainWindow::showMainMenu()
         QThread::msleep(500);
     }
     
+    // ✅ P2P 네트워크 연결 해제 (매칭 중단)
+    P2PNetwork::getInstance()->disconnectFromPeer();
+
+    // ✅ 현재 매칭 위젯 삭제
+    if (matchingWidget) {
+        stackedWidget->removeWidget(matchingWidget);
+        delete matchingWidget;
+        matchingWidget = nullptr;
+    }
+
     // Delay object deletion until event loop completes
     QTimer::singleShot(0, this, [this]() {
         qDebug() << "DEBUG: Executing delayed widget cleanup";
