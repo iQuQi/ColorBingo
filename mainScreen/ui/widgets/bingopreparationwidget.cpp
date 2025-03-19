@@ -17,6 +17,10 @@ BingoPreparationWidget::BingoPreparationWidget(QWidget *parent) :
     gameMode(GameMode::SINGLE)  // 기본값으로 SINGLE 모드 설정
 {
     qDebug() << "DEBUG: BingoPreparationWidget constructor starting";
+
+    // 네트워크
+    network = P2PNetwork::getInstance();
+    connect(network, &P2PNetwork::opponentDisconnected, this, &BingoPreparationWidget::onOpponentDisconnected);
     
     // 레이아웃 없이 절대 위치로 구성
     setLayout(nullptr);
@@ -463,3 +467,8 @@ void BingoPreparationWidget::setGameMode(GameMode mode)
         }
     }
 } 
+
+void BingoPreparationWidget::onOpponentDisconnected() {
+    qDebug() << "DEBUG: Back to main from BingoPreparationWidget";
+    emit backToMainRequested();
+}

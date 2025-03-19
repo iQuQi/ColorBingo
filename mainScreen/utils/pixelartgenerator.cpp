@@ -1,6 +1,8 @@
 #include "pixelartgenerator.h"
 #include <QDebug>
 #include <cmath>  // 수학 함수 및 상수(M_PI, cos 등)를 위한 헤더 추가
+#include <QPainterPath>    // QPainterPath 클래스 사용을 위한 헤더
+#include <QPainterPathStroker>  // QPainterPathStroker 클래스 사용을 위한 헤더
 
 // 싱글톤 인스턴스 초기화
 PixelArtGenerator* PixelArtGenerator::instance = nullptr;
@@ -375,104 +377,71 @@ QPixmap PixelArtGenerator::createVolumeImage(int volumeLevel, int size) {
     return volumeImage;
 }
 
-// 데이지 꽃 픽셀 아트 생성
-QPixmap PixelArtGenerator::createDaisyFlowerImage(int size) {
-    qDebug() << "Creating daisy flower image with size:" << size;
+// 별 픽셀 아트 생성
+QPixmap PixelArtGenerator::createStarImage(int size) {
+    qDebug() << "Creating star image with size:" << size;
     
-    QPixmap daisyImage(size, size);
-    daisyImage.fill(Qt::transparent);
-    QPainter painter(&daisyImage);
+    QPixmap starImage(size, size);
+    starImage.fill(Qt::transparent);
+    QPainter painter(&starImage);
     
-    // 픽셀 느낌을 조금만 남기기 위해 안티앨리어싱 활성화
+    // 부드러운 별 모양을 위해 안티앨리어싱 활성화
     painter.setRenderHint(QPainter::Antialiasing, true);
     
     // 크기 비율 계산 (원본 40x40 기준)
     float scale = size / 40.0f;
     
-    // 데이지 꽃 색상
-    QColor petalColor(255, 255, 255); // 흰색 꽃잎
-    QColor petalShadowColor(240, 240, 240); // 꽃잎 그림자
-    QColor centerColor(255, 220, 0);  // 노란색 꽃 중심
-    QColor centerDarkColor(230, 180, 0); // 꽃 중심 그림자
+    // 별 색상
+    QColor starColor(255, 215, 0);       // 노란색 별
     
-    // 배경 원 - 꽃 전체 영역 정의
-    int flowerSize = 36 * scale;
-    QRectF flowerRect((size - flowerSize) / 2, (size - flowerSize) / 2, flowerSize, flowerSize);
-    
-    // 꽃잎 그리기 (6방향으로 변경)
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(petalColor);
-    
-    // 각 꽃잎을 개별적으로 그리기 위한 준비
-    int petalCount = 6; // 8개에서 6개로 변경
-    double angleStep = 360.0 / petalCount;
-    int petalLength = 18 * scale; // 14에서 18로 증가시켜 더 길게
-    int petalWidth = 10 * scale;
+    // 별 모양 정의 (5개의 꼭지점)
+    int points = 5;
+    double innerRadius = 8 * scale;
+    double outerRadius = 18 * scale;
     QPointF center(size / 2, size / 2);
     
-    // 각 꽃잎을 타원형으로 그리기
-    for (int i = 0; i < petalCount; i++) {
-        double angle = i * angleStep;
-        
-        // 꽃잎의 중심 위치 계산
-        double radians = angle * M_PI / 180.0;
-        double distance = 8 * scale; // 중심에서의 거리
-        QPointF petalCenter(
-            center.x() + cos(radians) * distance,
-            center.y() + sin(radians) * distance
+    // 별 꼭지점 좌표를 저장할 배열
+    QPolygonF starPolygon;
+    
+    // 별 꼭지점 계산 - 맨 위 꼭짓점부터 시작하도록 수정
+    for (int i = 0; i < points * 2; ++i) {
+        // 각도 계산을 수정하여 꼭짓점이 정확히 위쪽에서 시작하도록 조정
+        double angle = (i * M_PI / points) - (M_PI / 2);
+        double radius = (i % 2 == 0) ? outerRadius : innerRadius;
+        starPolygon << QPointF(
+            center.x() + radius * cos(angle),
+            center.y() + radius * sin(angle)
         );
-        
-        // 꽃잎 그리기
-        painter.save();
-        painter.translate(petalCenter);
-        painter.rotate(angle);
-        
-        // 꽃잎 그림자 (살짝 어두운 영역)
-        painter.setBrush(petalShadowColor);
-        QRectF petalShadowRect(-petalLength/2 * 0.9, -petalWidth/2 * 0.9, petalLength * 0.9, petalWidth * 0.9);
-        painter.drawEllipse(petalShadowRect);
-        
-        // 꽃잎 메인
-        painter.setBrush(petalColor);
-        QRectF petalRect(-petalLength/2, -petalWidth/2, petalLength, petalWidth);
-        painter.drawEllipse(petalRect);
-        
-        painter.restore();
     }
     
-    // 꽃 중심 (노란색 원) - 크기 줄임
-    int centerSize = 12 * scale; // 16에서 12로 줄임
-    QRectF centerRect((size - centerSize) / 2, (size - centerSize) / 2, centerSize, centerSize);
+    // 별 테두리와 내부 채우기를 위한 경로 설정
+    QPainterPath path;
+    path.addPolygon(starPolygon);
+    path.closeSubpath();  // 경로 닫기 추가
     
-    // 약간의 그라데이션 효과를 위한 그림자
-    painter.setBrush(centerDarkColor);
-    painter.drawEllipse(centerRect.adjusted(1, 1, -1, -1));
+    // 별 경로를 둥글게 만들기 위한 QPainterPathStroker 사용
+    QPainterPathStroker stroker;
+    stroker.setWidth(3.0 * scale);  // 선 두께 설정
+    stroker.setCapStyle(Qt::RoundCap);  // 끝 부분을 둥글게
+    stroker.setJoinStyle(Qt::RoundJoin);  // 꼭지점을 둥글게
     
-    // 메인 중앙 원
-    painter.setBrush(centerColor);
-    painter.drawEllipse(centerRect);
+    // 둥근 경로 생성
+    QPainterPath roundedPath = stroker.createStroke(path);
+    roundedPath = roundedPath.united(path);  // 원래 경로와 합치기
     
-    // 중앙에 텍스처 느낌 추가 (작은 점들)
-    painter.setPen(QPen(QColor(230, 160, 0), 1));
-    int dotsCount = 10;
-    for (int i = 0; i < dotsCount; i++) {
-        double dotAngle = i * (360.0 / dotsCount) * M_PI / 180.0;
-        double dotDistance = centerSize / 5;
-        QPointF dotPos(
-            center.x() + cos(dotAngle) * dotDistance,
-            center.y() + sin(dotAngle) * dotDistance
-        );
-        painter.drawPoint(dotPos);
-    }
+    // 별 그리기
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(starColor);
+    painter.drawPath(roundedPath);
     
     // 페인터 종료 - 중요!
     painter.end();
     
     // 이미지가 제대로 생성되었는지 확인
-    qDebug() << "Daisy flower image created - size:" << daisyImage.size() 
-             << "isNull:" << daisyImage.isNull();
+    qDebug() << "Star image created - size:" << starImage.size() 
+             << "isNull:" << starImage.isNull();
     
-    return daisyImage;
+    return starImage;
 }
 
 // 보라색 귀여운 악마 픽셀 아트 생성
@@ -483,74 +452,102 @@ QPixmap PixelArtGenerator::createCuteDevilImage(int size) {
     devilImage.fill(Qt::transparent);
     QPainter painter(&devilImage);
     
-    // 안티앨리어싱 활성화 (부드러운 이미지를 위해)
-    painter.setRenderHint(QPainter::Antialiasing, true);
+    // 픽셀 느낌을 위해 안티앨리어싱 비활성화
+    painter.setRenderHint(QPainter::Antialiasing, false);
     
     // 크기 비율 계산 (원본 40x40 기준)
     float scale = size / 40.0f;
     
     // 악마 색상 - 참조 이미지 색상에 맞춤
     QColor bodyColor(138, 73, 214);  // 보라색 몸통
-    QColor hornColor(116, 55, 188);  // 조금 더 어두운 보라색 뿔
-    QColor eyeColor(255, 255, 255);  // 하얀색 눈
+    QColor hornColor(116, 55, 188);  // 조금 더 어두운 보라색 뿔/귀
     QColor pupilColor(0, 0, 0);      // 검은색 동공
     QColor mouthColor(70, 30, 120);  // 어두운 보라색 (입)
     
-    // 원형 몸통 그리기
+    // 픽셀 크기 정의
+    int pixelSize = 2 * scale;
+    
+    // 원형 몸통 그리기 (픽셀 형태로)
     painter.setPen(Qt::NoPen);
     painter.setBrush(bodyColor);
-    painter.drawEllipse(QRectF(2 * scale, 2 * scale, 36 * scale, 36 * scale));
     
-    // 뿔 그리기 (삼각형 형태)
-    QPolygonF leftHorn;
-    leftHorn << QPointF(10 * scale, 12 * scale)
-             << QPointF(4 * scale, 2 * scale)
-             << QPointF(16 * scale, 5 * scale);
-             
-    QPolygonF rightHorn;
-    rightHorn << QPointF(30 * scale, 12 * scale)
-              << QPointF(36 * scale, 2 * scale)
-              << QPointF(24 * scale, 5 * scale);
-              
+    // 픽셀 형태의 원 그리기
+    for (int y = 2 * scale; y < 38 * scale; y += pixelSize) {
+        for (int x = 2 * scale; x < 38 * scale; x += pixelSize) {
+            int centerX = 20 * scale;
+            int centerY = 20 * scale;
+            int radius = 18 * scale;
+            
+            // 원 안에 있는지 확인
+            int dx = x - centerX;
+            int dy = y - centerY;
+            if (dx*dx + dy*dy <= radius*radius) {
+                painter.fillRect(x, y, pixelSize, pixelSize, bodyColor);
+            }
+        }
+    }
+    
+    // 더 뾰족한 귀 그리기 (첨부 이미지와 비슷하게)
     painter.setBrush(bodyColor);
-    painter.drawPolygon(leftHorn);
-    painter.drawPolygon(rightHorn);
     
-    // 내부에 약간 어두운 뿔 표현
-    QPolygonF leftHornShade;
-    leftHornShade << QPointF(10 * scale, 10 * scale)
-                  << QPointF(6 * scale, 3 * scale)
-                  << QPointF(14 * scale, 5 * scale);
-                  
-    QPolygonF rightHornShade;
-    rightHornShade << QPointF(30 * scale, 10 * scale)
-                   << QPointF(34 * scale, 3 * scale)
-                   << QPointF(26 * scale, 5 * scale);
-                   
+    // 왼쪽 귀 (왼쪽으로 기울임)
+    QPolygon leftEar;
+    leftEar << QPoint(6 * scale, 8 * scale)     // 왼쪽 아래 (더 왼쪽으로)
+           << QPoint(8 * scale, 0 * scale)     // 맨 위 (왼쪽으로 기울임)
+           << QPoint(15 * scale, 8 * scale);    // 오른쪽 아래
+    painter.drawPolygon(leftEar);
+    
+    // 오른쪽 귀 (오른쪽으로 기울임)
+    QPolygon rightEar;
+    rightEar << QPoint(25 * scale, 8 * scale)   // 왼쪽 아래
+            << QPoint(32 * scale, 0 * scale)    // 맨 위 (오른쪽으로 기울임)
+            << QPoint(34 * scale, 8 * scale);   // 오른쪽 아래 (더 오른쪽으로)
+    painter.drawPolygon(rightEar);
+    
+    // 내부 귀 음영 (더 어두운 부분)
     painter.setBrush(hornColor);
-    painter.drawPolygon(leftHornShade);
-    painter.drawPolygon(rightHornShade);
     
-    // 눈 그리기 - 타원형
-    painter.setBrush(eyeColor);
-    painter.drawEllipse(QRectF(12 * scale, 14 * scale, 6 * scale, 8 * scale));  // 왼쪽 눈
-    painter.drawEllipse(QRectF(22 * scale, 14 * scale, 6 * scale, 8 * scale));  // 오른쪽 눈
+    // 왼쪽 귀 안쪽 (더 작게, 왼쪽으로 기울임)
+    QPolygon leftEarInner;
+    leftEarInner << QPoint(8 * scale, 8 * scale)    // 왼쪽 아래 (약간 조정)
+                << QPoint(9 * scale, 2 * scale)    // 맨 위 (왼쪽으로 기울임)
+                << QPoint(13 * scale, 8 * scale);   // 오른쪽 아래
+    painter.drawPolygon(leftEarInner);
     
-    // 동공 그리기 - 타원형
+    // 오른쪽 귀 안쪽 (더 작게, 오른쪽으로 기울임)
+    QPolygon rightEarInner;
+    rightEarInner << QPoint(27 * scale, 8 * scale)  // 왼쪽 아래
+                 << QPoint(31 * scale, 2 * scale)   // 맨 위 (오른쪽으로 기울임)
+                 << QPoint(32 * scale, 8 * scale);  // 오른쪽 아래 (약간 조정)
+    painter.drawPolygon(rightEarInner);
+    
+    // 눈 그리기 (픽셀 형태로) - 높이를 낮추고 간격 넓힘
     painter.setBrush(pupilColor);
-    painter.drawEllipse(QRectF(13 * scale, 16 * scale, 4 * scale, 5 * scale));  // 왼쪽 동공
-    painter.drawEllipse(QRectF(23 * scale, 16 * scale, 4 * scale, 5 * scale));  // 오른쪽 동공
+    painter.fillRect(12 * scale, 18 * scale, 4 * scale, 4 * scale, pupilColor);  // 왼쪽 눈 (높이 낮춤, 간격 벌림)
+    painter.fillRect(26 * scale, 18 * scale, 4 * scale, 4 * scale, pupilColor);  // 오른쪽 눈 (높이 낮춤, 간격 벌림)
     
-    // 눈썹 그리기 - 사선형
-    QPen eyebrowPen(pupilColor, 1.5 * scale, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    painter.setPen(eyebrowPen);
-    painter.drawLine(QPointF(11 * scale, 13 * scale), QPointF(16 * scale, 12 * scale));  // 왼쪽 눈썹
-    painter.drawLine(QPointF(24 * scale, 12 * scale), QPointF(29 * scale, 13 * scale));  // 오른쪽 눈썹
+    // 눈썹 그리기 - 일자형(ㅡ ㅡ) 화난 느낌, 눈과 맞닿게, 더 두껍게
+    painter.setBrush(pupilColor);
     
-    // 미소 그리기 - 반원형
-    painter.setPen(Qt::NoPen);
+    // 왼쪽 눈썹 (일자형 - 화난 느낌)
+    painter.fillRect(10 * scale, 17 * scale, 8 * scale, 2 * scale, pupilColor);  // 왼쪽 눈썹 (가로 직선, 두껍게)
+    
+    // 오른쪽 눈썹 (일자형 - 화난 느낌)
+    painter.fillRect(22 * scale, 17 * scale, 8 * scale, 2 * scale, pupilColor);  // 오른쪽 눈썹 (가로 직선, 두껍게)
+    
+    // 입 그리기 (픽셀 형태로) - 웃는 느낌, 너비 줄임
     painter.setBrush(mouthColor);
-    painter.drawChord(QRectF(12 * scale, 24 * scale, 16 * scale, 10 * scale), 0, 180 * 16);  // 미소
+    for (int x = 16 * scale; x <= 24 * scale; x += pixelSize) {  // 입 너비 더 줄임 (14~26 -> 16~24)
+        // 웃는 느낌의 입 (중앙이 아래로, 끝이 위로)
+        int yPos = 26 * scale; // 기본 위치
+        int xDist = abs(x - 20 * scale);
+        
+        // 확실한 웃는 표정 - U자형 곡선
+        // 중앙에서는 가장 아래로, 끝으로 갈수록 위로 올라가는 곡선
+        yPos = 28 * scale - xDist;  // 확실한 웃는 표정을 위한 계산식 개선
+        
+        painter.fillRect(x, yPos, pixelSize, pixelSize, mouthColor);
+    }
     
     // 페인터 종료 - 중요!
     painter.end();

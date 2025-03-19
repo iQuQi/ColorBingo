@@ -11,6 +11,7 @@
 #include <QShowEvent>
 #include <QHideEvent>
 #include "hardwareInterface/SoundManager.h"
+#include "hardwareInterface/accelerometer.h"
 #include "../../utils/pixelartgenerator.h"
 
 MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialColors) : QWidget(parent),
@@ -23,15 +24,19 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     showRgbValues(true),
     selectedCell(-1, -1),
     bingoCount(0),
-    remainingSeconds(120), // 2분 = 120초 타이머 초기화
+    remainingSeconds(180), // 3분 = 180초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
-    hadBonusInLastLine(false)
+    cellRgbValueLabel(nullptr),  // 새 RGB 라벨 초기화
+    hadBonusInLastLine(false),
+    accelerometer(nullptr),  // 가속도계 초기화
+    submitButton(nullptr)
+
 {
     qDebug() << "MultiGameWidget constructor started";
 
     // Initialize main variables (prevent null pointers)
     cameraView = nullptr;
-    rgbValueLabel = nullptr;
+    cameraRgbValueLabel = nullptr;  // 변수 이름 변경
     circleSlider = nullptr;
     rgbCheckBox = nullptr;
     camera = nullptr;
@@ -44,6 +49,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     connect(network, &P2PNetwork::gameOverReceived, this, &MultiGameWidget::showFailMessage);
     connect(network, &P2PNetwork::opponentDisconnected, this, &MultiGameWidget::onOpponentDisconnected);
     connect(network, &P2PNetwork::networkErrorOccurred, this, &MultiGameWidget::onNetworkError);
+    connect(network, &P2PNetwork::attackedByOpponent, this, &MultiGameWidget::attackedByOpponent);
 
 
     // 메인 레이아웃 생성 (가로 분할)
@@ -56,15 +62,29 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     QVBoxLayout* bingoVLayout = new QVBoxLayout(bingoArea);
     // bingoLayout = new QVBoxLayout(bingoArea);
     bingoVLayout->setContentsMargins(0, 0, 0, 0);
+    bingoVLayout->setSpacing(10); // 빙고 영역 내부 위젯 간격 일관성 설정
 
     // 빙고 점수 표시 레이블
-    bingoScoreLabel = new QLabel("My Bingo: 0", bingoArea);
+    bingoScoreLabel = new QLabel("My Bingo: 0", this);
     bingoScoreLabel->setAlignment(Qt::AlignCenter);
     QFont scoreFont = bingoScoreLabel->font();
     scoreFont.setPointSize(12);
     scoreFont.setBold(true);
     bingoScoreLabel->setFont(scoreFont);
     bingoScoreLabel->setMinimumHeight(30);
+
+    // 빙고 셀 RGB 값 표시 레이블 추가
+    cellRgbValueLabel = new QLabel("R: 0  G: 0  B: 0", bingoArea);
+    cellRgbValueLabel->setFixedHeight(30);
+    cellRgbValueLabel->setFixedWidth(300); // 카메라 라벨과 같은 너비
+    cellRgbValueLabel->setAlignment(Qt::AlignCenter);
+    QFont cellRgbFont = cellRgbValueLabel->font();
+    cellRgbFont.setPointSize(12);
+    cellRgbValueLabel->setFont(cellRgbFont);
+    cellRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 가능하도록
+
+    // 모서리가 둥근 스타일 적용
+    cellRgbValueLabel->setStyleSheet("background-color: black; color: white; border-radius: 15px; padding: 3px;");
 
     // Status message label for game instructions
     statusMessageLabel = new QLabel("Please select a cell to match colors", bingoArea);
@@ -79,7 +99,14 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     bingoVLayout->addStretch(1);
 
     // Add score label above the grid
-    bingoVLayout->addWidget(bingoScoreLabel);
+    //bingoVLayout->addWidget(bingoScoreLabel);
+
+    // 빙고 셀 RGB 값 라벨 추가
+    bingoVLayout->addWidget(cellRgbValueLabel, 0, Qt::AlignCenter);
+
+    // 초기 RGB 값 표시 확실하게 설정
+    QColor initialColor(0, 0, 0);
+    updateCellRgbLabel(initialColor);
 
     // 빙고 그리드를 담을 컨테이너 위젯
     QWidget* gridWidget = new QWidget(bingoArea);
@@ -141,7 +168,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     connect(successTimer, &QTimer::timeout, this, &MultiGameWidget::hideSuccessAndReset);
 
     // 상대방 빙고 점수 표시 레이블 추가
-    opponentBingoScoreLabel = new QLabel("Opponent Bingo: 0", bingoArea);
+    opponentBingoScoreLabel = new QLabel("Opponent Bingo: 0", this);
     opponentBingoScoreLabel->setAlignment(Qt::AlignCenter);
     QFont opponentScoreFont = opponentBingoScoreLabel->font();
     opponentScoreFont.setPointSize(12);
@@ -167,15 +194,21 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     cameraVLayout->addStretch(1);
 
     // 1. RGB 값 표시 레이블 (맨 위에 배치)
-    rgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
-    rgbValueLabel->setFrameShape(QFrame::Box);
-    rgbValueLabel->setFixedHeight(30);
-    rgbValueLabel->setFixedWidth(300); // Same width as camera
-    rgbValueLabel->setAlignment(Qt::AlignCenter);
-    QFont rgbFont = rgbValueLabel->font();
+    cameraRgbValueLabel = new QLabel("R: 0  G: 0  B: 0");
+    //rgbValueLabel->setFrameShape(QFrame::Box);
+    cameraRgbValueLabel->setFixedHeight(30);
+    cameraRgbValueLabel->setFixedWidth(300); // Same width as camera
+    cameraRgbValueLabel->setAlignment(Qt::AlignCenter);
+    QFont rgbFont = cameraRgbValueLabel->font();
     rgbFont.setPointSize(12);
-    rgbValueLabel->setFont(rgbFont);
-    cameraVLayout->addWidget(rgbValueLabel, 0, Qt::AlignCenter);
+    cameraRgbValueLabel->setFont(rgbFont);
+    cameraRgbValueLabel->setAutoFillBackground(true); // 배경색 설정 활성화
+
+    // 모서리가 둥근 스타일 적용
+    cameraRgbValueLabel->setStyleSheet("background-color: black; color: white; border-radius: 15px; padding: 3px;");
+
+
+    cameraVLayout->addWidget(cameraRgbValueLabel, 0, Qt::AlignCenter);
 
     // 2. 카메라 뷰 (중간에 배치)
     cameraView = new QLabel(cameraArea);
@@ -216,6 +249,20 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     // 슬라이더 레이아웃을 카메라 레이아웃에 추가
     cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
 
+    // 제출 버튼 생성 - 카메라 뷰 안에 배치
+    submitButton = new QPushButton("Submit", cameraView);
+    submitButton->setFixedSize(100, 40);
+    submitButton->setStyleSheet("QPushButton { background-color: #4a86e8; color: white; "
+                               "border-radius: 6px; font-weight: bold; } "
+                               "QPushButton:hover { background-color: #3a76d8; }");
+    // 카메라 뷰 내부 하단 중앙에 버튼 배치
+    submitButton->move((cameraView->width() - submitButton->width()) / 2,
+                      cameraView->height() - submitButton->height() - 10);
+
+    // 초기에는 버튼 숨김
+    submitButton->hide();
+
+
     // Add stretch for vertical centering
     cameraVLayout->addStretch(1);
 
@@ -252,6 +299,9 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
 
     // 위젯 컨트롤 신호 연결 - remove RGB checkbox connection
     connect(circleSlider, &QSlider::valueChanged, this, &MultiGameWidget::onCircleSliderValueChanged);
+
+    // 버튼 신호 연결
+    connect(submitButton, &QPushButton::clicked, this, &MultiGameWidget::onSubmitButtonClicked);
 
     // 카메라 재시작 타이머 설정 (유지)
     cameraRestartTimer = new QTimer(this);
@@ -308,11 +358,11 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     
     // 버튼 폰트 크기 조정 (작은 버튼이므로 폰트 크기를 직접 조정)
     backButtonStyle.replace("font-size: 24px", "font-size: 14px");
-    restartButtonStyle.replace("font-size: 24px", "font-size: 14px");
+    //restartButtonStyle.replace("font-size: 24px", "font-size: 14px");
     
     // 패딩 축소 (버튼이 작으므로)
     backButtonStyle.replace("padding: 15px 30px", "padding: 5px 10px");
-    restartButtonStyle.replace("padding: 15px 30px", "padding: 5px 10px");
+    //restartButtonStyle.replace("padding: 15px 30px", "padding: 5px 10px");
     
     backButton->setStyleSheet(backButtonStyle);
     //restartButton->setStyleSheet(restartButtonStyle);
@@ -328,6 +378,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     // 타이머 레이블 초기화
     timerLabel = new QLabel(this);
     timerLabel->setAlignment(Qt::AlignCenter);
+    timerLabel->setFixedSize(QSize(140, 60)); // 크기 설정: 너비 140px, 음량 버튼과 동일한 높이 60px
     timerLabel->setStyleSheet("QLabel { background-color: rgba(50, 50, 50, 200); color: white; "
                              "border-radius: 12px; padding: 8px 15px; font-weight: bold; font-size: 24px; }");
 
@@ -352,13 +403,78 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     // 타이머 디스플레이 초기화 및 시작
     updateTimerDisplay();
     gameTimer->start();
+
+    // 슬라이더 최적화 변수 초기화
+   isSliderDragging = false;
+   pendingCircleRadius = circleRadius;
+
+   // 체크박스 디바운싱 변수 초기화
+   isCheckboxProcessing = false;
+   checkboxDebounceTimer = new QTimer(this);
+   checkboxDebounceTimer->setSingleShot(true);
+
+   // 슬라이더 업데이트 타이머 설정
+   sliderUpdateTimer = new QTimer(this);
+   sliderUpdateTimer->setSingleShot(true);
+   connect(sliderUpdateTimer, &QTimer::timeout, this, [this]() {
+       // 타이머가 끝나면 원 반지름 값을 업데이트하고 프레임 다시 그리기
+       circleRadius = pendingCircleRadius;
+       updateCameraFrame();
+       isSliderDragging = false;
+   });
+
+   // 슬라이더의 슬롯 연결 - valueChanged 대신 두 개의 이벤트로 분리
+   disconnect(circleSlider, &QSlider::valueChanged, this, &MultiGameWidget::onCircleSliderValueChanged);
+
+   // 슬라이더가 움직이는 동안 빠른 업데이트를 위한 연결
+   connect(circleSlider, &QSlider::sliderPressed, this, [this]() {
+       isSliderDragging = true;
+   });
+
+   // 슬라이더가 움직이는 동안의 미리보기 업데이트
+   connect(circleSlider, &QSlider::valueChanged, this, [this](int value) {
+       pendingCircleRadius = value;
+       circleValueLabel->setText(QString::number(value));
+
+       // 미리보기 업데이트 - 기존 카메라 프레임에 원만 다시 그림
+       updateCirclePreview(value);
+
+       // 타이머 재시작 (디바운싱)
+       sliderUpdateTimer->start(150); // 150ms 후 실제 업데이트
+   });
+
+   // 슬라이더를 놓았을 때 최종 업데이트
+   connect(circleSlider, &QSlider::sliderReleased, this, [this]() {
+       // 즉시 업데이트
+       circleRadius = pendingCircleRadius;
+       sliderUpdateTimer->stop();
+       updateCameraFrame();
+       isSliderDragging = false;
+   });
+
     // 웹캠 물리 버튼 초기화 코드 변경
     webcamButton = new WebcamButton(this);
     if (webcamButton->initialize()) {
-        // 버튼 신호 연결
-        connect(webcamButton, &WebcamButton::captureButtonPressed, this, &MultiGameWidget::onCaptureButtonClicked);
+        // 버튼 신호 연결 - 명시적 연결로 변경하고 디버그 메시지 추가
+        qDebug() << "Connecting WebcamButton signal to MultiGameWidget slot...";
+        bool connected = connect(webcamButton, &WebcamButton::captureButtonPressed,
+                       this, &MultiGameWidget::onCaptureButtonClicked,
+                       Qt::QueuedConnection); // 큐드 연결 방식 사용
+        if (connected) {
+            qDebug() << "WebcamButton signal connected successfully!";
+        } else {
+            qDebug() << "Failed to connect WebcamButton signal!";
+        }
+    } else {
+        qDebug() << "WebcamButton initialization failed";
+
     }
+
+    // 가속도계 초기화
+    initializeAccelerometer();
 }
+
+
 
 MultiGameWidget::~MultiGameWidget() {
     // 물리 버튼 정리
@@ -377,6 +493,18 @@ MultiGameWidget::~MultiGameWidget() {
         delete successTimer;
     }
 
+    // 슬라이더 업데이트 타이머 정리
+        if (sliderUpdateTimer) {
+            sliderUpdateTimer->stop();
+            delete sliderUpdateTimer;
+    }
+
+    // 체크박스 디바운싱 타이머 정리
+    if (checkboxDebounceTimer) {
+        checkboxDebounceTimer->stop();
+        delete checkboxDebounceTimer;
+    }
+
     if (camera) {
         camera->stopCapturing();
         camera->closeCamera();
@@ -386,6 +514,10 @@ MultiGameWidget::~MultiGameWidget() {
         gameTimer->stop();
         delete gameTimer;
     }
+
+    // 가속도계 정리
+    stopAccelerometer();
+
 }
 
 bool MultiGameWidget::eventFilter(QObject *obj, QEvent *event) {
@@ -422,12 +554,55 @@ void MultiGameWidget::selectCell(int row, int col) {
         return;
     }
 
+    // 이미 선택된 셀이면 무시
+    if (row == selectedCell.first && col == selectedCell.second)
+        return;
+
+    // 이미 완료된 셀이면 무시
+    if (bingoStatus[row][col])
+        return;
+
+    // 틸트 모드 상태 완전 초기화
+    qDebug() << "Selecting new cell, resetting tilt mode state";
+
+    // 틸트 관련 상태 초기화
+    capturedColor = QColor(); // 캡처된 색상 초기화
+    tiltAdjustedColor = QColor(); // 틸트 조정된 색상 초기화
+
+    // 틸트 관련 UI 초기화
+    updateTiltColorDisplay(QColor(0, 0, 0)); // 틸트 디스플레이 초기화
+
+    // 틸트 관련 버튼 숨김
+    submitButton->hide();
+
+    // 이전에 선택된 셀이 있으면 선택 해제
+    if (selectedCell.first >= 0 && selectedCell.second >= 0) {
+        if (!bingoStatus[selectedCell.first][selectedCell.second]) {
+            updateCellStyle(selectedCell.first, selectedCell.second);
+        }
+    }
+
+
     selectedCell = qMakePair(row, col);
 
     // Safety check: verify bingoCells array
     if (!bingoCells[row][col]) {
         qDebug() << "bingoCells is null at row:" << row << ", col:" << col;
         return;
+    }
+
+    // 선택된 셀 스타일 업데이트 - 선택 표시
+    QColor cellColor = getCellColor(row, col);
+    QString styleSheet = QString("background-color: %1; border: 3px solid red;")
+                             .arg(cellColor.name());
+    bingoCells[row][col]->setStyleSheet(styleSheet);
+
+    // 선택된 셀의 색상을 RGB 라벨에 표시
+    updateCellRgbLabel(cellColor);
+
+    // 카메라 시작 (이미 시작 중인 경우에도 재시작)
+    if (isCapturing) {
+        stopCamera();
     }
 
     // 경계선 스타일 생성
@@ -459,10 +634,12 @@ void MultiGameWidget::selectCell(int row, int col) {
     // 셀이 선택되었으니 상태 메시지 업데이트
     if (isBonusCell[row][col]) {
         // 보너스 셀인 경우 추가 메시지 표시
-        statusMessageLabel->setText("This is the attack cell. Bingo here changes a random cell\n on the opponent's board.");
+        //statusMessageLabel->setText(QString("This is the attack cell. Bingo here changes a random cell\n on the opponent's board.").arg(row+1).arg(col+1));
+        statusMessageLabel->setText(QString("This is the attack cell. Bingo here changes a random cell\n on the opponent's board."));
     } else {
         // 일반 셀인 경우 기본 메시지 표시
-        statusMessageLabel->setText(QString("Press camera button to match colors").arg(row+1).arg(col+1));
+        //statusMessageLabel->setText(QString("Press camera button to match colors").arg(row+1).arg(col+1));
+        statusMessageLabel->setText(QString("Press camera button to match colors"));
     }
 }
 
@@ -476,6 +653,12 @@ void MultiGameWidget::deselectCell() {
 
         // 선택 상태 초기화
         selectedCell = qMakePair(-1, -1);
+
+        // RGB 값 라벨 초기화 (0,0,0으로 설정)
+        if (cellRgbValueLabel) {
+            QColor defaultColor(0, 0, 0);
+            updateCellRgbLabel(defaultColor);
+        }
 
         // Stop camera
         stopCamera();
@@ -757,6 +940,7 @@ QString MultiGameWidget::getCellColorName(int /* row */, int /* col */) {
 }
 
 int MultiGameWidget::colorDistance(const QColor &c1, const QColor &c2) {
+    /*
     // HSV 색상 모델로 변환
     int h1, s1, v1, h2, s2, v2;
     c1.getHsv(&h1, &s1, &v1);
@@ -783,6 +967,28 @@ int MultiGameWidget::colorDistance(const QColor &c1, const QColor &c2) {
 
     // 거리를 0-100 범위로 스케일링
     return static_cast<int>(distance * 100);
+    */
+    // RGB 값 추출
+    int r1 = c1.red();
+    int g1 = c1.green();
+    int b1 = c1.blue();
+
+    int r2 = c2.red();
+    int g2 = c2.green();
+    int b2 = c2.blue();
+
+    // 단순 RGB 유클리드 거리 계산 (가중치 없음)
+    int rDiff = r1 - r2;
+    int gDiff = g1 - g2;
+    int bDiff = b1 - b2;
+
+    // 유클리드 거리 계산: sqrt(rDiff² + gDiff² + bDiff²)
+    double distance = sqrt(rDiff*rDiff + gDiff*gDiff + bDiff*bDiff);
+
+    // 0-100 스케일로 변환 (색상 범위 255를 고려하여 스케일링)
+    // sqrt(3 * 255²) = 약 441.67이 최대 거리
+    return static_cast<int>(distance * 100 / 441.67);
+
 }
 
 bool MultiGameWidget::isColorBright(const QColor &color) {
@@ -790,6 +996,7 @@ bool MultiGameWidget::isColorBright(const QColor &color) {
     return ((color.red() * 299) + (color.green() * 587) + (color.blue() * 114)) / 1000 > 128;
 }
 
+/*
 // 색상 보정 함수 추가
 QImage MultiGameWidget::adjustColorBalance(const QImage &image) {
     // qDebug() << "Color balance adjustment started";
@@ -839,6 +1046,7 @@ QImage MultiGameWidget::adjustColorBalance(const QImage &image) {
         return image;  // Return original image on error
     }
 }
+*/
 
 // updateCameraFrame 함수에 색상 보정 적용
 void MultiGameWidget::updateCameraFrame() {
@@ -855,6 +1063,15 @@ void MultiGameWidget::updateCameraFrame() {
         return;
     }
 
+    // 현재 프레임을 originalFrame에 저장
+    originalFrame = frame;
+
+    // 슬라이더 드래그 중이면 미리보기 업데이트만 수행하고 리턴
+    if (isSliderDragging) {
+        updateCirclePreview(pendingCircleRadius);
+        return;
+    }
+
     // Safety check: verify cameraView is valid
     if (!cameraView) {
         qDebug() << "ERROR: cameraView is null";
@@ -864,7 +1081,9 @@ void MultiGameWidget::updateCameraFrame() {
     try {
         // qDebug() << "Applying color balance adjustment";
         // Apply color balance correction - with safety check
-        QImage adjustedFrame;
+
+        //QImage adjustedFrame;
+        /*
         try {
             adjustedFrame = adjustColorBalance(frame);
             if (adjustedFrame.isNull()) {
@@ -875,13 +1094,16 @@ void MultiGameWidget::updateCameraFrame() {
         catch (...) {
             qDebug() << "ERROR: Exception during color adjustment, using original frame";
             adjustedFrame = frame;
-        }
+        }*/
 
         // Scale image to fit the QLabel while maintaining aspect ratio
-        QPixmap scaledPixmap = QPixmap::fromImage(adjustedFrame).scaled(
+        QPixmap scaledPixmap = QPixmap::fromImage(frame).scaled(
             cameraView->size(),
             Qt::IgnoreAspectRatio,
             Qt::FastTransformation);
+
+        // 미리보기 픽스맵 업데이트 (다음 슬라이더 변경시 사용)
+        previewPixmap = scaledPixmap.copy();
 
         // Create a copy of the pixmap for painting
         QPixmap paintPixmap = scaledPixmap;
@@ -901,15 +1123,24 @@ void MultiGameWidget::updateCameraFrame() {
         // Calculate circle radius (percentage of image width)
         int radius = (paintPixmap.width() * circleRadius) / 100;
 
+        /*
         // Set green pen with increased width
             QPen pen(QColor(0, 255, 0, 180));
         pen.setWidth(5);
             painter.setPen(pen);
+        */
+
+        // Set pen color to match RGB values
+        QColor circleColor(avgRed, avgGreen, avgBlue);
+        QPen pen(circleColor);
+        pen.setWidth(5);
+        painter.setPen(pen);
 
         // Draw circle
-            painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
+        painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
         painter.end();
 
+        /*
         // Calculate RGB average inside circle area
         if (adjustedFrame.width() > 0 && adjustedFrame.height() > 0) {
             // Calculate safe radius
@@ -917,10 +1148,19 @@ void MultiGameWidget::updateCameraFrame() {
                                qMin(adjustedFrame.width()/2, adjustedFrame.height()/2));
 
             calculateAverageRGB(adjustedFrame, adjustedFrame.width()/2, adjustedFrame.height()/2, safeRadius);
+        }*/
+
+        if (frame.width() > 0 && frame.height() > 0) {
+            // Calculate safe radius
+            int safeRadius = qMin((frame.width() * circleRadius) / 100,
+                               qMin(frame.width()/2, frame.height()/2));
+
+            calculateAverageRGB(frame, frame.width()/2, frame.height()/2, safeRadius);
         }
 
+
         // Update RGB values (always, no need for conditional check)
-        if (rgbValueLabel) {
+        /*if (rgbValueLabel) {
                 rgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
 
             // Set background color to average RGB
@@ -929,6 +1169,54 @@ void MultiGameWidget::updateCameraFrame() {
                 palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
                 rgbValueLabel->setPalette(palette);
                 rgbValueLabel->setAutoFillBackground(true);
+        }*/
+        if (cameraRgbValueLabel) {
+                cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
+
+            // 밝기에 따라 텍스트 색상 결정
+            QString textColor = (avgRed + avgGreen + avgBlue > 380) ? "black" : "white";
+
+            // 스타일시트 설정 (둥근 모서리 유지)
+            cameraRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                             .arg(avgRed).arg(avgGreen).arg(avgBlue).arg(textColor));
+
+            // Circle 슬라이더 값 라벨 색상도 함께 업데이트
+            if (circleValueLabel) {
+                circleValueLabel->setStyleSheet(QString(
+                    "background-color: rgb(%1, %2, %3);"
+                    "color: %4;"
+                    "border-radius: 10px;"
+                    "padding: 3px 8px;"
+                    "min-width: 30px;"
+                    "font-weight: bold;"
+                ).arg(avgRed).arg(avgGreen).arg(avgBlue).arg(textColor));
+            }
+
+            // 슬라이더 손잡이 색상 업데이트
+            if (circleSlider) {
+                // 슬라이더 핸들 색상을 현재 RGB 값으로 설정
+                circleSlider->setStyleSheet(QString(
+                    "QSlider::groove:horizontal {"
+                    "    border: 1px solid #999999;"
+                    "    height: 8px;"
+                    "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
+                    "    margin: 2px 0;"
+                    "    border-radius: 4px;"
+                    "}"
+                    "QSlider::handle:horizontal {"
+                    "    background: rgb(%1, %2, %3);"
+                    "    border: 1px solid #5c5c5c;"
+                    "    width: 18px;"
+                    "    margin: -6px 0;"
+                    "    border-radius: 9px;"
+                    "}"
+                    "QSlider::handle:horizontal:hover {"
+                    "    background: rgb(%4, %5, %6);"
+                    "    border: 1px solid #333333;"
+                    "}"
+                ).arg(avgRed).arg(avgGreen).arg(avgBlue)
+                 .arg(qMin(avgRed + 20, 255)).arg(qMin(avgGreen + 20, 255)).arg(qMin(avgBlue + 20, 255)));
+            }
         }
 
         // Display the final image with circle
@@ -1006,6 +1294,8 @@ void MultiGameWidget::handleCameraDisconnect() {
 }
 
 void MultiGameWidget::onCircleSliderValueChanged(int value) {
+    // 더 이상 사용되지 않음 - 새 최적화된 구현으로 대체됨
+    // 단, 호환성을 위해 함수는 유지
     circleRadius = value;
     circleValueLabel->setText(QString::number(value));
 }
@@ -1031,51 +1321,186 @@ void MultiGameWidget::restartCamera()
 }
 
 void MultiGameWidget::onCaptureButtonClicked() {
-    if (!isCapturing || selectedCell.first < 0)
+    qDebug() << "MultiGameWidget::onCaptureButtonClicked called!";
+
+    if (!isCapturing || selectedCell.first < 0) {
+        qDebug() << "Capture ignored: Camera not capturing or no cell selected";
         return;
+    }
+
 
     // 현재 선택된 셀 좌표
     int row = selectedCell.first;
     int col = selectedCell.second;
 
+
     // 선택된 셀이 이미 빙고 상태이면 무시
     if (bingoStatus[row][col])
         return;
 
-    // RGB 값 확인
-    QColor selectedColor = cellColors[row][col];
-    QColor capturedColor(avgRed, avgGreen, avgBlue);
 
-    // 색상 거리 계산
+    // 이전에 캡처된 색상이 있는지 확인
+    bool isFreshCapture = !capturedColor.isValid();
+
+
+    // 새로운 색상 캡처
+    capturedColor = QColor(avgRed, avgGreen, avgBlue);
+
+    qDebug() << "Capture button clicked - Captured color: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
+    qDebug() << "Fresh capture: " << (isFreshCapture ? "Yes" : "No");
+
+    // 빙고 셀 색상과 비교
+    QColor selectedColor = cellColors[row][col];
     int distance = colorDistance(selectedColor, capturedColor);
 
-    // 디버그 로그 추가
-    qDebug() << "Capture button clicked - Color distance: " << distance;
+    qDebug() << "Initial color comparison - Distance: " << distance;
     qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
-    qDebug() << "Captured color: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
+
 
     // 색상 유사도 임계값 (updateCameraFrame과 동일하게 20으로 설정)
-    const int THRESHOLD = 30;
+    const int THRESHOLD = 20;
+
+    // 카메라 중지 - 색상 판단 후 중지하도록 위치 변경
+    if (isCapturing) {
+        camera->stopCapturing();
+        isCapturing = false;
+
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
+        }
+    }
+
+    // 가속도계 상태 확인
+    if (accelerometer && accelerometer->isInitialized()) {
+        qDebug() << "Accelerometer is initialized and ready for tilt adjustment";
+    } else {
+        qDebug() << "Warning: Accelerometer is not initialized or not ready";
+        // 가속도계 재초기화 시도
+        initializeAccelerometer();
+    }
 
     // 색상 유사도에 따라 처리
     if (distance <= THRESHOLD) {  // 색상이 유사함 - 빙고 처리
-        qDebug() << "Color match successful! Processing bingo";
-        bingoStatus[row][col] = true;
-        updateCellStyle(row, col);
+        // qDebug() << "Color match successful! Processing bingo";
+        qDebug() << "Immediate color match successful!";
+        processColorMatch(capturedColor);
 
-        // 선택 초기화
-        selectedCell = qMakePair(-1, -1);
+        // 상태 초기화
+        capturedColor = QColor();
+        tiltAdjustedColor = QColor();
+        submitButton->hide();
+    } else {
+        qDebug() << "Colors don't match initially. Activating tilt adjustment mode.";
 
-        // 빙고 점수 업데이트
-        updateBingoScore();
+        // 틸트 조절 모드 활성화 - 먼저 설정하여 확실히 적용되도록 함
+        tiltAdjustedColor = capturedColor;
+        updateTiltColorDisplay(capturedColor);
 
-        // 상태 메시지 업데이트
-        statusMessageLabel->setText("Great job! Perfect color match!");
+        // Submit 버튼을 표시하고 메시지 업데이트
+        submitButton->show();
+        statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
 
-        // 2초 후에 메시지 변경하는 타이머 설정
-        QTimer::singleShot(2000, this, [this]() {
-            statusMessageLabel->setText("Please select a cell to match colors");
-        });
+        // X 표시 그리기
+        QPixmap cellBg(bingoCells[row][col]->size());
+        cellBg.fill(cellColors[row][col]);
+
+        // X 이미지 준비 - 셀 크기에 맞게 스케일링
+        QPixmap scaledX = xImage.scaled(
+            bingoCells[row][col]->width() - 20,
+            bingoCells[row][col]->height() - 20,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+
+        // 배경에 X 이미지 합성
+        QPainter painter(&cellBg);
+        painter.drawPixmap(
+            (cellBg.width() - scaledX.width()) / 2,
+            (cellBg.height() - scaledX.height()) / 2,
+            scaledX
+        );
+        painter.end(); // 반드시 종료해야 함
+
+        // 테두리 추가
+        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
+
+        // 셀에 합성된 이미지 적용
+        bingoCells[row][col]->setPixmap(cellBg);
+        bingoCells[row][col]->setStyleSheet(style);
+
+       // 실패 효과음 재생
+       SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
+
+       // X 표시는 일정 시간 후 사라지지만 틸트 모드는 유지됨
+       QTimer::singleShot(2000, this, [this, row, col]() {
+           if (!bingoStatus[row][col]) {  // 이미 매칭되지 않은 경우에만
+               // X 표시만 제거하고 셀 색상 복원
+               QPixmap cellBg(bingoCells[row][col]->size());
+               cellBg.fill(cellColors[row][col]);
+               bingoCells[row][col]->setPixmap(cellBg);
+
+               // 테두리 스타일 복원
+               QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+               if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+               if (col == 2) borderStyle += " border-right: 1px solid black;";
+               bingoCells[row][col]->setStyleSheet(borderStyle);
+
+               // 틸트 모드 상태 메시지 유지하고 가속도계 상태 재확인
+               if (accelerometer && accelerometer->isInitialized()) {
+                   statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
+               } else {
+                   // 가속도계 재초기화 시도
+                   initializeAccelerometer();
+                   if (accelerometer && accelerometer->isInitialized()) {
+                       statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
+                   } else {
+                       statusMessageLabel->setText("Colors don't match! Submit again when ready");
+                   }
+               }
+           }
+       });
+   }
+}
+
+// 제출 버튼 클릭 처리 함수
+void MultiGameWidget::onSubmitButtonClicked() {
+    if (selectedCell.first < 0 || !capturedColor.isValid())
+        return;
+
+    int row = selectedCell.first;
+    int col = selectedCell.second;
+
+    // 빙고 셀 색상과 비교
+    QColor selectedColor = cellColors[row][col];
+    int distance = colorDistance(selectedColor, tiltAdjustedColor);
+
+    qDebug() << "Tilt-adjusted color comparison - Distance: " << distance;
+    qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
+    qDebug() << "Tilt-adjusted color: " << tiltAdjustedColor.red() << "," << tiltAdjustedColor.green() << "," << tiltAdjustedColor.blue();
+
+    // 색상이 유사하면 성공 처리
+    if (distance <= THRESHOLD) {
+        qDebug() << "Tilt-adjusted color match successful!";
+
+        // 틸트 조절된 색상으로 매칭 처리
+        processColorMatch(tiltAdjustedColor);
+
+        // Submit 버튼 숨김
+        submitButton->hide();
+
+        // 상태 초기화
+        capturedColor = QColor();
+        tiltAdjustedColor = QColor();
 
         // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
         if (isCapturing) {
@@ -1099,10 +1524,147 @@ void MultiGameWidget::onCaptureButtonClicked() {
                 sliderWidget->hide();
             }
         }
+    } else {
+        // 색상이 여전히 다르면 실패 메시지 및 재시도 버튼 표시
+        qDebug() << "Tilt-adjusted color match failed!";
 
-        // 성공 효과음 재생
-        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
-    } else {  // 색상이 다름 - X 표시 (개선된 코드)
+        // X 표시 처리 추가
+        int row = selectedCell.first;
+        int col = selectedCell.second;
+
+        // 셀 자체에 X 표시 그리기
+        QPixmap cellBg(bingoCells[row][col]->size());
+        cellBg.fill(cellColors[row][col]);
+
+        // X 이미지 준비 - 셀 크기에 맞게 스케일링
+        QPixmap scaledX = xImage.scaled(
+            bingoCells[row][col]->width() - 20,
+            bingoCells[row][col]->height() - 20,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+
+        // 배경에 X 이미지 합성
+        QPainter painter(&cellBg);
+        painter.drawPixmap(
+            (cellBg.width() - scaledX.width()) / 2,
+            (cellBg.height() - scaledX.height()) / 2,
+            scaledX
+        );
+        painter.end(); // 반드시 종료해야 함
+
+        // 테두리 추가
+        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                .arg(cellColors[row][col].name())
+                .arg(borderStyle);
+
+        // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
+        bingoCells[row][col]->setPixmap(cellBg);
+        bingoCells[row][col]->setStyleSheet(style);
+
+        // 실패 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
+
+        // 2초 후에 X 표시 제거하고 원래 스타일로 돌려놓기
+        QTimer::singleShot(2000, this, [this, row, col]() {
+            if (row >= 0 && row < 3 && col >= 0 && col < 3) {
+                if (!bingoStatus[row][col]) {
+                    updateCellStyle(row, col);
+                }
+            }
+            statusMessageLabel->setText("Try again or select another cell");
+        });
+
+        // 실패 메시지 업데이트
+        statusMessageLabel->setText("Colors still don't match! Try again.");
+        }
+    }
+
+// 색상 매치 처리 함수 (기존 onCaptureButtonClicked 코드 일부 분리)
+void MultiGameWidget::processColorMatch(const QColor &colorToMatch) {
+    qDebug() << "processColorMatch: Function started, selectedCell:" << selectedCell.first << "," << selectedCell.second;
+
+    if (selectedCell.first < 0) {
+        qDebug() << "processColorMatch: No cell selected, function exit";
+        return;
+    }
+
+    int row = selectedCell.first;
+    int col = selectedCell.second;
+
+    qDebug() << "processColorMatch: Selected cell coordinates: row=" << row << ", col=" << col;
+
+    // 선택된 셀이 이미 빙고 상태이면 무시
+    if (bingoStatus[row][col]) {
+        qDebug() << "processColorMatch: Cell already in bingo state, function exit";
+        return;
+    }
+
+    // RGB 값 확인
+    QColor selectedColor = cellColors[row][col];
+
+    // 색상 거리 계산
+    int distance = colorDistance(selectedColor, colorToMatch);
+
+    // 디버그 로그 추가
+    qDebug() << "Color match processing - Color distance: " << distance;
+    qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
+    qDebug() << "Matched color: " << colorToMatch.red() << "," << colorToMatch.green() << "," << colorToMatch.blue();
+    qDebug() << "Color match successful! Processing bingo";
+
+    bingoStatus[row][col] = true;
+    updateCellStyle(row, col);
+
+    // 정답 소리 재생 추가
+    SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
+
+    // 선택 초기화
+    selectedCell = qMakePair(-1, -1);
+
+    // 빙고 점수 업데이트
+    updateBingoScore();
+
+    // 상태 메시지 업데이트
+    statusMessageLabel->setText("Great job! Perfect color match!");
+
+    // 2초 후에 메시지 변경하는 타이머 설정
+    QTimer::singleShot(2000, this, [this]() {
+        statusMessageLabel->setText("Please select a cell to match colors");
+    });
+
+    // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
+    if (isCapturing) {
+        // 카메라 캡처 중지
+        camera->stopCapturing();
+        isCapturing = false;
+
+        // 재시작 타이머 중지
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
+        }
+
+        // 카메라 뷰에 메시지 표시
+        if (cameraView) {
+            cameraView->setText("Camera is off");
+            cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
+        }
+
+        // 슬라이더 위젯 숨김
+        if (sliderWidget) {
+            sliderWidget->hide();
+        }
+    }
+
+    capturedColor = QColor();
+}
+/*else {  // 색상이 다름 - X 표시 (개선된 코드)
         qDebug() << "Color match failed - drawing X mark";
 
         // 셀 자체에 X 표시 그리기
@@ -1156,9 +1718,8 @@ void MultiGameWidget::onCaptureButtonClicked() {
             fadeXTimer->stop();
         }
         fadeXTimer->start(2000);
-
     }
-}
+}*/
 
 void MultiGameWidget::clearXMark() {
     // X 표시가 있는 셀이 있으면 원래대로 되돌리기
@@ -1169,7 +1730,7 @@ void MultiGameWidget::clearXMark() {
 
             // pixmap이 설정되어 있고, 체크되지 않은 셀인 경우
             if (!cellPixmap.isNull() && !bingoStatus[row][col]) {
-                // 원래 스타일로 복원 (보너스 칸인 경우 데이지 꽃 이미지 다시 표시)
+                // 원래 스타일로 복원 (보너스 칸인 경우 별 이미지 다시 표시)
                 updateCellStyle(row, col);
             }
         }
@@ -1278,7 +1839,7 @@ void MultiGameWidget::updateBingoScore() {
     }
     
     // 빙고 점수 표시 업데이트 (영어로 변경)
-    bingoScoreLabel->setText(QString("Bingo: %1").arg(bingoCount));
+    bingoScoreLabel->setText(QString("My Bingo: %1").arg(bingoCount));
 
     // 빙고 완성시 축하 메시지
     if (bingoCount > 0) {
@@ -1386,7 +1947,7 @@ void MultiGameWidget::hideSuccessAndReset() {
 
     // 타이머 중지
     if (gameTimer) {
-        qDebug() << "DEBUG: BingoWidget - Stopping game timer in hideSuccessAndReset";
+        qDebug() << "DEBUG: MultiGameWidget - Stopping game timer in hideSuccessAndReset";
         gameTimer->stop();
     }
 
@@ -1405,8 +1966,11 @@ void MultiGameWidget::hideSuccessAndReset() {
 
     // 빙고 점수 초기화
     bingoCount = 0;
-    bingoScoreLabel->setText("Bingo: 0");
+    bingoScoreLabel->setText("My Bingo: 0");
     bingoScoreLabel->setStyleSheet("");
+
+    //opponentBingoScoreLabel->setText("Opponent Bingo: 0");
+    //opponentBingoScoreLabel->setStyleSheet("");
 
     // 선택된 셀 초기화
     selectedCell = qMakePair(-1, -1);
@@ -1432,8 +1996,11 @@ void MultiGameWidget::resetGame() {
 
     // 빙고 점수 초기화
     bingoCount = 0;
-    bingoScoreLabel->setText("Bingo: 0");
+    bingoScoreLabel->setText("My Bingo: 0");
     bingoScoreLabel->setStyleSheet("");
+
+    //opponentBingoScoreLabel->setText("Opponent Bingo: 0");
+    //opponentBingoScoreLabel->setStyleSheet("");
 
     // 선택된 셀 초기화
     selectedCell = qMakePair(-1, -1);
@@ -1479,6 +2046,13 @@ void MultiGameWidget::onBackButtonClicked() {
         qDebug() << "DEBUG: MultiGameWidget - Stopping camera before emitting back signal";
         stopCamera();
     }
+
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: MultiGameWidget - Stopping game timer before emitting back signal";
+        gameTimer->stop();
+    }
+
 
     //network->disconnectFromPeer();
 
@@ -1595,16 +2169,41 @@ void MultiGameWidget::updateTimerDisplay() {
 // 타이머 위치 업데이트
 void MultiGameWidget::updateTimerPosition() {
     if (timerLabel) {
-        // 화면 상단 중앙에 배치
-        timerLabel->move((width() - timerLabel->width()) / 2, 10);
+        // 타이머를 화면 중앙 상단에 배치, 상단 여백(20px)은 유지하면서 수평으로 중앙 정렬
+        int margin = 20;
+        timerLabel->move((width() - timerLabel->width()) / 2, margin);
         timerLabel->raise(); // 다른 위젯 위에 표시
+
+
+        //int yOffset = margin + timerLabel->height() + 5; // 다음 위젯의 Y 위치 계산
+
+        // 빙고 점수 레이블을 타이머 아래로 이동
+        if (bingoScoreLabel) {
+            qDebug() << "bingoscorelabel under timerlabel)";
+            bingoScoreLabel->move((width() - bingoScoreLabel->width()) / 2, margin + timerLabel->height() + 5);
+            bingoScoreLabel->raise(); // 다른 위젯 위에 표시
+           //yOffset += bingoScoreLabel->height() + 5; // 다음 위젯 위치 업데이트
+        } else {
+            qDebug() << "bingoScoreLabel does not exist";
+        }
+
+        /*
+        // 상대방 빙고 점수 레이블을 빙고 점수 레이블 아래에 배치
+        if (opponentBingoScoreLabel) {
+            opponentBingoScoreLabel->move((width() - opponentBingoScoreLabel->width()) / 2, yOffset);
+            opponentBingoScoreLabel->raise();
+        }*/
     }
+
+
+
+
 }
 
 // 타이머 시작
 void MultiGameWidget::startGameTimer() {
     // 타이머 초기화
-    remainingSeconds = 120; // 2분
+    remainingSeconds = 180; // 3분
     updateTimerDisplay();
 
     // 타이머 시작
@@ -1625,6 +2224,66 @@ void MultiGameWidget::showFailMessage() {
         stopCamera();
     }
 
+    // 실패 메시지 레이블 초기화 및 표시
+        failLabel->setVisible(true);
+        failLabel->raise(); // 다른 위젯 위에 표시
+
+        // 실패 메시지 레이블 크기와 위치 설정
+        failLabel->setGeometry(0, 0, width(), height());
+        failLabel->show();
+        qDebug() << "DEBUG: Fail message label setup completed";
+
+        // 배경과 텍스트가 포함된 픽스맵 생성
+        QPixmap combinedPixmap(width(), height());
+        combinedPixmap.fill(QColor(0, 0, 0, 150)); // 반투명 검은색 배경
+
+        // 슬픈 얼굴 이미지 가져오기
+        QPixmap sadFacePixelArt = PixelArtGenerator::getInstance()->createSadFacePixelArt();
+
+        // 이미지와 텍스트를 합성할 페인터 생성
+        QPainter painter(&combinedPixmap);
+
+        // 텍스트 설정
+        QFont font = painter.font();
+        font.setPointSize(64);
+        font.setBold(true);
+        painter.setFont(font);
+        painter.setPen(Qt::red);
+
+        // 텍스트 크기 계산
+        QFontMetrics fm(font);
+        QRect textRect = fm.boundingRect("FAIL");
+
+        // 이미지와 텍스트의 전체 너비 계산
+        int totalWidth = sadFacePixelArt.width() + textRect.width() + 30; // 30px의 간격 추가
+
+        // 시작 x 위치 계산 (화면 중앙에 배치)
+        int startX = (width() - totalWidth) / 2;
+        int centerY = height() / 2;
+
+        // 텍스트 그리기 (이미지 왼쪽에)
+        painter.drawText(QRect(startX, centerY - 50, textRect.width(), 100), Qt::AlignVCenter, "FAIL");
+
+        // 슬픈 얼굴 이미지 그리기 (텍스트 오른쪽에)
+        int imageX = startX + textRect.width() + 30; // 텍스트 오른쪽에 30px 간격 추가
+        int imageY = centerY - sadFacePixelArt.height() / 2;
+        painter.drawPixmap(imageX, imageY, sadFacePixelArt);
+
+        // 합성 완료
+        painter.end();
+
+        // 결과물을 레이블에 설정
+        failLabel->setPixmap(combinedPixmap);
+        qDebug() << "DEBUG: Sad face image and FAIL text setup completed";
+
+        // 5초 후 메시지 숨기고 메인 화면으로 돌아가기 (효과음이 완전히 재생될 때까지 대기)
+        QTimer::singleShot(5000, this, &MultiGameWidget::hideFailAndReset);
+        qDebug() << "DEBUG: Fail timer started, message will disappear after 5 seconds";
+
+        // 실패 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::FAIL_SOUND);
+
+    /*
     // 실패 메시지 레이블 크기와 위치 설정
     failLabel->setGeometry(0, 0, width(), height());
     failLabel->raise(); // 다른 위젯 위에 표시
@@ -1635,6 +2294,7 @@ void MultiGameWidget::showFailMessage() {
 
     // 2초 후 메시지 숨기고 메인 화면으로 돌아가기
     QTimer::singleShot(2000, this, &MultiGameWidget::hideFailAndReset);
+    */
 }
 
 // 실패 메시지 숨기고 게임 초기화
@@ -1647,10 +2307,39 @@ void MultiGameWidget::hideFailAndReset() {
     }
 
     // 게임 상태 초기화
-    resetGame();
+    //resetGame();
+
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: MultiGameWidget - Stopping game timer in hideFailAndReset";
+        gameTimer->stop();
+    }
+
+    // 게임 상태만 초기화 (타이머 재시작하지 않음)
+    // 빙고 상태 초기화
+    for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            bingoStatus[row][col] = false;
+            bingoCells[row][col]->clear();  // 모든 내용 지우기
+            bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);  // 여백 초기화
+
+            // 색상은 유지하고 스타일만 업데이트
+            updateCellStyle(row, col);
+        }
+    }
+
+    // 빙고 점수 초기화
+    bingoCount = 0;
+    bingoScoreLabel->setText("My Bingo: 0");
+    bingoScoreLabel->setStyleSheet("");
+
+    // 선택된 셀 초기화
+    selectedCell = qMakePair(-1, -1);
+
 
     // 메인 화면으로 돌아가는 신호 발생
     emit backToMainRequested();
+
 }
 
 // 전달받은 색상을 셀에 설정하는 메서드
@@ -1816,14 +2505,14 @@ void MultiGameWidget::updateRgbValues() {
                        (frame.width() * circleRadius) / 100);
 
     // RGB 값 업데이트
-    rgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
+    cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(avgRed).arg(avgGreen).arg(avgBlue));
 
     // 배경색 설정 (평균 RGB 값)
-    QPalette palette = rgbValueLabel->palette();
+    QPalette palette = cameraRgbValueLabel->palette();
     palette.setColor(QPalette::Window, QColor(avgRed, avgGreen, avgBlue));
     palette.setColor(QPalette::WindowText, (avgRed + avgGreen + avgBlue > 380) ? Qt::black : Qt::white);
-    rgbValueLabel->setPalette(palette);
-    rgbValueLabel->setAutoFillBackground(true);
+    cameraRgbValueLabel->setPalette(palette);
+    cameraRgbValueLabel->setAutoFillBackground(true);
 }
 
 void MultiGameWidget::showEvent(QShowEvent *event)
@@ -1841,8 +2530,256 @@ void MultiGameWidget::hideEvent(QHideEvent *event)
         stopCamera();
         camera->closeCamera();
     }
+
+    // 타이머 중지
+    if (gameTimer) {
+        qDebug() << "DEBUG: MultiGameWidget - Stopping game timer in hideEvent";
+        gameTimer->stop();
+    }
+
 }
 
+// 선택된 셀의 RGB 값 업데이트 함수 추가
+void MultiGameWidget::updateCellRgbLabel(const QColor &color) {
+    if (cellRgbValueLabel) {
+        int r = color.red();
+        int g = color.green();
+        int b = color.blue();
+
+        cellRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(r).arg(g).arg(b));
+
+        // 밝기에 따라 텍스트 색상 결정
+        QString textColor = (r + g + b > 380) ? "black" : "white";
+
+        // 스타일시트 설정 (둥근 모서리 유지)
+        cellRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                       .arg(r).arg(g).arg(b).arg(textColor));
+    }
+}
+
+// 가속도계 초기화 함수 구현
+void MultiGameWidget::initializeAccelerometer() {
+    // 이미 초기화된 경우 정리
+    if (accelerometer) {
+        stopAccelerometer();
+    }
+
+    // 새 가속도계 객체 생성
+    accelerometer = new Accelerometer(this);
+
+    // 가속도계 초기화
+    if (!accelerometer->initialize()) {
+        qDebug() << "Accelerometer initialization failed";
+        delete accelerometer;
+        accelerometer = nullptr;
+        return;
+    }
+
+    // 가속도계 데이터 변경 신호 연결
+    connect(accelerometer, &Accelerometer::accelerometerDataChanged,
+            this, &MultiGameWidget::handleAccelerometerDataChanged);
+
+    qDebug() << "Accelerometer initialized successfully";
+}
+
+// 가속도계 정리 함수 구현
+void MultiGameWidget::stopAccelerometer() {
+    if (accelerometer) {
+        // 가속도계 신호 연결 해제
+        disconnect(accelerometer, &Accelerometer::accelerometerDataChanged,
+                  this, &MultiGameWidget::handleAccelerometerDataChanged);
+
+        // 메모리 해제
+        delete accelerometer;
+        accelerometer = nullptr;
+    }
+}
+
+// 가속도계 데이터 변경 처리 함수
+void MultiGameWidget::handleAccelerometerDataChanged(const AccelerometerData &data) {
+    // 틸트 모드가 활성화되어 있고 캡처된 색상이 있을 때만 처리
+    if (!capturedColor.isValid()) {
+        return;
+    }
+
+    // 캡처된 색상이 있으면 틸트 값에 따라 색상 조정
+    // 색상 조정
+    tiltAdjustedColor = adjustColorByTilt(capturedColor, data);
+
+    // 조정된 색상을 카메라 뷰에 표시
+    updateTiltColorDisplay(tiltAdjustedColor);
+}
+
+// 틸트 색상 표시 업데이트 함수
+void MultiGameWidget::updateTiltColorDisplay(const QColor &color) {
+    if (cameraView) {
+        // 카메라 중지 상태를 저장
+        bool wasCameraStopped = !isCapturing;
+
+        // 카메라 뷰의 크기에 맞는 픽스맵 생성
+        QPixmap colorPixmap(cameraView->width(), cameraView->height());
+        colorPixmap.fill(color);
+
+        // 가운데에 RGB 값 표시
+        QPainter painter(&colorPixmap);
+
+        // 밝기에 따라 텍스트 색상 결정
+        bool isBright = isColorBright(color);
+        QColor textColor = isBright ? Qt::black : Qt::white;
+
+        // 큰 폰트로 RGB 값 표시
+        QFont font = painter.font();
+        font.setPointSize(16);
+        font.setBold(true);
+        painter.setFont(font);
+        painter.setPen(textColor);
+
+        QString rgbText = QString("R: %1  G: %2  B: %3\n\nTilt to adjust color").arg(color.red()).arg(color.green()).arg(color.blue());
+
+        // 텍스트를 가운데에 그림
+        painter.drawText(colorPixmap.rect(), Qt::AlignCenter, rgbText);
+
+        // 카메라 RGB 값 레이블도 업데이트
+        if (cameraRgbValueLabel) {
+            cameraRgbValueLabel->setText(QString("R: %1  G: %2  B: %3").arg(color.red()).arg(color.green()).arg(color.blue()));
+
+            // 밝기에 따라 텍스트 색상 결정
+            QString textColor = (color.red() + color.green() + color.blue() > 380) ? "black" : "white";
+
+        // 스타일시트 설정 (둥근 모서리 유지)
+            cameraRgbValueLabel->setStyleSheet(QString("background-color: rgb(%1, %2, %3); color: %4; border-radius: 15px; padding: 3px;")
+                                                         .arg(color.red()).arg(color.green()).arg(color.blue()).arg(textColor));
+        }
+
+        // 카메라 뷰에 픽스맵 설정
+        cameraView->setPixmap(colorPixmap);
+
+        // 슬라이더 핸들 색상도 업데이트
+        if (circleSlider) {
+            // 슬라이더 핸들 색상을 현재 RGB 값으로 설정
+            circleSlider->setStyleSheet(QString(
+                "QSlider::groove:horizontal {"
+                "    border: 1px solid #999999;"
+                "    height: 8px;"
+                "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #B1B1B1, stop:1 #c4c4c4);"
+                "    margin: 2px 0;"
+                "    border-radius: 4px;"
+                "}"
+                "QSlider::handle:horizontal {"
+                "    background: rgb(%1, %2, %3);"
+                "    border: 1px solid #5c5c5c;"
+                "    width: 18px;"
+                "    margin: -6px 0;"
+                "    border-radius: 9px;"
+                "}"
+                "QSlider::handle:horizontal:hover {"
+                "    background: rgb(%4, %5, %6);"
+                "    border: 1px solid #333333;"
+                "}"
+            ).arg(color.red()).arg(color.green()).arg(color.blue())
+             .arg(qMin(color.red() + 20, 255)).arg(qMin(color.green() + 20, 255)).arg(qMin(color.blue() + 20, 255)));
+        }
+
+        // Circle 슬라이더 값 라벨 색상도 함께 업데이트
+        if (circleValueLabel) {
+            circleValueLabel->setStyleSheet(QString(
+                "background-color: rgb(%1, %2, %3);"
+                "color: %4;"
+                "border-radius: 10px;"
+                "padding: 3px 8px;"
+                "min-width: 30px;"
+                "font-weight: bold;"
+            ).arg(color.red()).arg(color.green()).arg(color.blue()).arg(isBright ? "black" : "white"));
+        }
+    }
+}
+
+// 색상을 기울기에 따라 조정하는 함수
+QColor MultiGameWidget::adjustColorByTilt(const QColor &color, const AccelerometerData &tiltData) {
+    // HSV 색상 모델로 변환
+    int h, s, v;
+    color.getHsv(&h, &s, &v);
+
+    // X축 기울기에 따라 채도(Saturation) 조정 (좌우 기울기)
+    // 일반적으로 가속도계는 기기가 평평할 때 0에 가까운 값, 기울일 때 양수 또는 음수
+    int tiltX = tiltData.x;
+
+    // x축 틸트에 따른 채도 조정 계수 (범위를 조정하기 위한 매핑)
+    // 기울기 범위를 채도 조정 범위로 매핑 - 계수 증가하여 더 민감하게
+    double saturationAdjustment = tiltX / 2.0;  // 4.0 -> 2.0으로 변경하여 2배 더 민감하게
+
+    // 새 채도 계산 (범위를 0-255 내로 유지)
+    int newSaturation = qBound(0, s + static_cast<int>(saturationAdjustment), 255);
+
+    // Y축 기울기에 따라 명도(Value) 조정 (앞뒤 기울기)
+    int tiltY = tiltData.y;
+
+    // y축 틸트에 따른 명도 조정 계수 - 계수 증가
+    double valueAdjustment = tiltY / 6.0;  // 30.0에서 12.0으로 변경하여 약 2.5배 더 민감하게
+
+    // 새 명도 계산 (범위를 0-255 내로 유지)
+    int newValue = qBound(0, v + static_cast<int>(valueAdjustment), 255);
+
+    // 색상(Hue)은 유지하고 채도와 명도만 조정된 새 색상 반환
+    return QColor::fromHsv(h, newSaturation, newValue);
+}
+
+// 원 미리보기만 빠르게 업데이트하는 함수
+void MultiGameWidget::updateCirclePreview(int radius) {
+    // 원본 프레임이 없으면 리턴
+    if (originalFrame.isNull() || !cameraView) {
+        return;
+    }
+
+    // 기존의 미리보기 픽스맵이 없거나 크기가 다르면 새로 생성
+    if (previewPixmap.isNull() || previewPixmap.width() != cameraView->width() ||
+        previewPixmap.height() != cameraView->height()) {
+
+        // 원래 프레임으로부터 미리보기 픽스맵 생성 (최초 1회만 실행)
+        // QImage adjustedFrame;
+        // try {
+        //     adjustedFrame = adjustColorBalance(originalFrame);
+        //     if (adjustedFrame.isNull()) {
+        //         adjustedFrame = originalFrame;
+        //     }
+        // } catch (...) {
+            // adjustedFrame = originalFrame;
+        // }
+
+        previewPixmap = QPixmap::fromImage(originalFrame).scaled(
+            cameraView->size(),
+            Qt::IgnoreAspectRatio,
+            Qt::FastTransformation);
+    }
+
+    // 미리보기 픽스맵 복사본 생성 (원본 유지)
+    QPixmap tempPixmap = previewPixmap.copy();
+
+    // 원 그리기
+    QPainter painter(&tempPixmap);
+    if (!painter.isActive()) {
+        return;
+    }
+
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // 원 중심과 반지름 계산
+    int centerX = tempPixmap.width() / 2;
+    int centerY = tempPixmap.height() / 2;
+    int drawRadius = (tempPixmap.width() * radius) / 100;
+
+    // 현재 RGB 값으로 원 색상 설정
+    QPen pen(QColor(avgRed, avgGreen, avgBlue));
+    pen.setWidth(5);
+    painter.setPen(pen);
+
+    // 원 그리기
+    painter.drawEllipse(QPoint(centerX, centerY), drawRadius, drawRadius);
+    painter.end();
+
+    // 카메라 뷰에 미리보기 표시
+    cameraView->setPixmap(tempPixmap);
+}
 
 void MultiGameWidget::onOpponentDisconnected() {
     qDebug() << "🎉 Opponent disconnected! You win!";
@@ -1912,6 +2849,7 @@ void MultiGameWidget::hideAttackMessage() {
 }
 
 void MultiGameWidget::attackedByOpponent() {
+    showAttackMessage();
     QVector<QPair<int, int>> availableCells;
 
     for (int row = 0; row < 3; ++row) {
@@ -1941,6 +2879,7 @@ void MultiGameWidget::attackedByOpponent() {
     QColor randomColor = QColor::fromHsv(hue, saturation, value);
 
     cellColors[attackedRow][attackedCol] = randomColor;
+    updateCellStyle(attackedRow, attackedCol);
 
 }
 

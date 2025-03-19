@@ -37,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(network, &P2PNetwork::opponentMultiGameReady, this, &MainWindow::onOpponentMultiGameReady);
 
+
     waitingLabel = new QLabel("Waiting for Other Player...", this);
     waitingLabel->setAlignment(Qt::AlignCenter);
     waitingLabel->setStyleSheet("background-color: rgba(0, 0, 0, 150); color: white; font-size: 24px; padding: 10px;");

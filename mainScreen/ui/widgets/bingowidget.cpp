@@ -25,7 +25,7 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     showRgbValues(true),
     selectedCell(qMakePair(-1, -1)),
     bingoCount(0),
-    remainingSeconds(120), // 2분 = 120초 타이머 초기화
+    remainingSeconds(180), // 3분 = 180초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
     cellRgbValueLabel(nullptr),  // 새 RGB 라벨 초기화
     accelerometer(nullptr),  // 가속도계 초기화
@@ -55,7 +55,7 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     bingoVLayout->setSpacing(10); // 빙고 영역 내부 위젯 간격 일관성 설정
 
     // 빙고 점수 표시 레이블
-    bingoScoreLabel = new QLabel("Bingo: 0", bingoArea);
+    bingoScoreLabel = new QLabel("Bingo: 0", this); // bingoArea 대신 this를 부모로 설정
     bingoScoreLabel->setAlignment(Qt::AlignCenter);
     QFont scoreFont = bingoScoreLabel->font();
     scoreFont.setPointSize(12);
@@ -87,9 +87,6 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
 
     // Add stretch to center bingo section vertically
     bingoVLayout->addStretch(1);
-
-    // Add score label above the grid
-    bingoVLayout->addWidget(bingoScoreLabel);
 
     // 빙고 셀 RGB 값 라벨 추가
     bingoVLayout->addWidget(cellRgbValueLabel, 0, Qt::AlignCenter);
@@ -220,37 +217,17 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     // 슬라이더 레이아웃을 카메라 레이아웃에 추가
     cameraVLayout->addWidget(sliderWidget, 0, Qt::AlignCenter);
     
-    // 제출 버튼 생성
-    submitButton = new QPushButton("Submit", cameraArea);
-    submitButton->setFixedSize(100, 30);
+    // 제출 버튼 생성 - 카메라 뷰 안에 배치
+    submitButton = new QPushButton("Submit", cameraView); 
+    submitButton->setFixedSize(100, 40);
     submitButton->setStyleSheet("QPushButton { background-color: #4a86e8; color: white; "
                                "border-radius: 6px; font-weight: bold; } "
                                "QPushButton:hover { background-color: #3a76d8; }");
+    // 카메라 뷰 내부 하단 중앙에 버튼 배치
+    submitButton->move((cameraView->width() - submitButton->width()) / 2, 
+                      cameraView->height() - submitButton->height() - 10);
     
-    // 버튼들을 수평으로 담을 레이아웃 생성
-    QHBoxLayout *tiltControlsHLayout = new QHBoxLayout();
-    tiltControlsHLayout->setContentsMargins(10, 0, 10, 0);
-    
-    // 가운데 정렬을 위한 스트레치 추가
-    tiltControlsHLayout->addStretch(1);
-    
-    // 버튼을 추가할 컨테이너
-    QWidget *controlsContainer = new QWidget(cameraArea);
-    QHBoxLayout *containerLayout = new QHBoxLayout(controlsContainer);
-    containerLayout->setContentsMargins(0, 0, 0, 0);
-    containerLayout->setSpacing(0);
-    containerLayout->addWidget(submitButton);
-    
-    // 컨테이너 추가
-    tiltControlsHLayout->addWidget(controlsContainer);
-    
-    // 가운데 정렬을 위한 스트레치 추가
-    tiltControlsHLayout->addStretch(1);
-    
-    // 버튼들을 카메라 레이아웃에 직접 추가
-    cameraVLayout->addLayout(tiltControlsHLayout);
-    
-    // 초기에는 두 버튼 모두 숨김
+    // 초기에는 버튼 숨김
     submitButton->hide();
     
     // 하단에 stretch 추가하여 콘텐츠가 세로로 가운데 정렬되도록 함
@@ -582,10 +559,10 @@ void BingoWidget::selectCell(int row, int col) {
                    .arg(borderStyle);
     bingoCells[row][col]->setStyleSheet(style);
     
-    // 보너스 칸인 경우 데이지 꽃 이미지를 유지
+    // 보너스 칸인 경우 별 이미지를 유지
     if (isBonusCell[row][col] && !bingoStatus[row][col]) {
-        QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
-        bingoCells[row][col]->setPixmap(daisyImage);
+        QPixmap starImage = PixelArtGenerator::getInstance()->createStarImage(70);
+        bingoCells[row][col]->setPixmap(starImage);
         bingoCells[row][col]->setAlignment(Qt::AlignCenter);
     }
     
@@ -1160,7 +1137,17 @@ void BingoWidget::onCaptureButtonClicked() {
     qDebug() << "Capture button clicked - Captured color: " << capturedColor.red() << "," << capturedColor.green() << "," << capturedColor.blue();
     qDebug() << "Fresh capture: " << (isFreshCapture ? "Yes" : "No");
     
-    // 카메라 중지
+    // 빙고 셀 색상과 비교
+    QColor selectedColor = cellColors[row][col];
+    int distance = colorDistance(selectedColor, capturedColor);
+    
+    qDebug() << "Initial color comparison - Distance: " << distance;
+    qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
+    
+    // 색상 유사도 임계값
+    const int THRESHOLD = 20;  // 10에서 20으로 증가하여 더 관대하게 허용
+    
+    // 카메라 중지 - 색상 판단 후 중지하도록 위치 변경
     if (isCapturing) {
         camera->stopCapturing();
         isCapturing = false;
@@ -1170,12 +1157,14 @@ void BingoWidget::onCaptureButtonClicked() {
         }
     }
     
-    // 빙고 셀 색상과 비교
-    QColor selectedColor = cellColors[row][col];
-    int distance = colorDistance(selectedColor, capturedColor);
-    
-    qDebug() << "Initial color comparison - Distance: " << distance;
-    qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
+    // 가속도계 상태 확인
+    if (accelerometer && accelerometer->isInitialized()) {
+        qDebug() << "Accelerometer is initialized and ready for tilt adjustment";
+    } else {
+        qDebug() << "Warning: Accelerometer is not initialized or not ready";
+        // 가속도계 재초기화 시도
+        initializeAccelerometer();
+    }
     
     // 색상이 이미 유사하면 바로 성공 처리
     if (distance <= THRESHOLD) {
@@ -1187,16 +1176,85 @@ void BingoWidget::onCaptureButtonClicked() {
         tiltAdjustedColor = QColor();
         submitButton->hide();
     } else {
-        // 색상이 다르면 틸트 조절 모드 활성화
         qDebug() << "Colors don't match initially. Activating tilt adjustment mode.";
         
+        // 틸트 조절 모드 활성화 - 먼저 설정하여 확실히 적용되도록 함
         tiltAdjustedColor = capturedColor;
         updateTiltColorDisplay(capturedColor);
         
         // Submit 버튼을 표시하고 메시지 업데이트
         submitButton->show();
-        
         statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
+        
+        // X 표시 그리기
+        QPixmap cellBg(bingoCells[row][col]->size());
+        cellBg.fill(cellColors[row][col]);
+        
+        // X 이미지 준비 - 셀 크기에 맞게 스케일링
+        QPixmap scaledX = xImage.scaled(
+            bingoCells[row][col]->width() - 20,
+            bingoCells[row][col]->height() - 20,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+        
+        // 배경에 X 이미지 합성
+        QPainter painter(&cellBg);
+        painter.drawPixmap(
+            (cellBg.width() - scaledX.width()) / 2,
+            (cellBg.height() - scaledX.height()) / 2,
+            scaledX
+        );
+        painter.end(); // 반드시 종료해야 함
+        
+        // 테두리 추가
+        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+    
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                   .arg(cellColors[row][col].name())
+                   .arg(borderStyle);
+        
+        // 셀에 합성된 이미지 적용
+        bingoCells[row][col]->setPixmap(cellBg);
+        bingoCells[row][col]->setStyleSheet(style);
+        
+        // 실패 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
+        
+        // X 표시는 일정 시간 후 사라지지만 틸트 모드는 유지됨
+        QTimer::singleShot(2000, this, [this, row, col]() {
+            if (!bingoStatus[row][col]) {  // 이미 매칭되지 않은 경우에만
+                // X 표시만 제거하고 셀 색상 복원
+                QPixmap cellBg(bingoCells[row][col]->size());
+                cellBg.fill(cellColors[row][col]);
+                bingoCells[row][col]->setPixmap(cellBg);
+                
+                // 테두리 스타일 복원
+                QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+                if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+                if (col == 2) borderStyle += " border-right: 1px solid black;";
+                bingoCells[row][col]->setStyleSheet(borderStyle);
+                
+                // 틸트 모드 상태 메시지 유지하고 가속도계 상태 재확인
+                if (accelerometer && accelerometer->isInitialized()) {
+                    statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
+                } else {
+                    // 가속도계 재초기화 시도
+                    initializeAccelerometer();
+                    if (accelerometer && accelerometer->isInitialized()) {
+                        statusMessageLabel->setText("Colors don't match! Tilt device to adjust color and submit");
+                    } else {
+                        statusMessageLabel->setText("Colors don't match! Submit again when ready");
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -1256,8 +1314,62 @@ void BingoWidget::onSubmitButtonClicked() {
         // 색상이 여전히 다르면 실패 메시지 및 재시도 버튼 표시
         qDebug() << "Tilt-adjusted color match failed!";
         
+        // X 표시 처리 추가
+        int row = selectedCell.first;
+        int col = selectedCell.second;
+        
+        // 셀 자체에 X 표시 그리기
+        QPixmap cellBg(bingoCells[row][col]->size());
+        cellBg.fill(cellColors[row][col]);
+        
+        // X 이미지 준비 - 셀 크기에 맞게 스케일링
+        QPixmap scaledX = xImage.scaled(
+            bingoCells[row][col]->width() - 20,
+            bingoCells[row][col]->height() - 20,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        );
+        
+        // 배경에 X 이미지 합성
+        QPainter painter(&cellBg);
+        painter.drawPixmap(
+            (cellBg.width() - scaledX.width()) / 2,
+            (cellBg.height() - scaledX.height()) / 2,
+            scaledX
+        );
+        painter.end(); // 반드시 종료해야 함
+        
+        // 테두리 추가
+        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+        if (row == 2) {
+            borderStyle += " border-bottom: 1px solid black;";
+        }
+        if (col == 2) {
+            borderStyle += " border-right: 1px solid black;";
+        }
+        QString style = QString("background-color: %1; %2 border: 3px solid red;")
+                .arg(cellColors[row][col].name())
+                .arg(borderStyle);
+        
+        // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
+        bingoCells[row][col]->setPixmap(cellBg);
+        bingoCells[row][col]->setStyleSheet(style);
+        
+        // 실패 효과음 재생
+        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
+        
+        // 2초 후에 X 표시 제거하고 원래 스타일로 돌려놓기
+        QTimer::singleShot(2000, this, [this, row, col]() {
+            if (row >= 0 && row < 3 && col >= 0 && col < 3) {
+                if (!bingoStatus[row][col]) {
+                    updateCellStyle(row, col);
+                }
+            }
+            statusMessageLabel->setText("Try again or select another cell");
+        });
+        
         // 실패 메시지 업데이트
-        statusMessageLabel->setText("Colors still don't match! Try again or press Retry button");
+        statusMessageLabel->setText("Colors still don't match! Try again.");
     }
 }
 
@@ -1291,100 +1403,43 @@ void BingoWidget::processColorMatch(const QColor &colorToMatch) {
     qDebug() << "Color match processing - Color distance: " << distance;
     qDebug() << "Selected cell color: " << selectedColor.red() << "," << selectedColor.green() << "," << selectedColor.blue();
     qDebug() << "Matched color: " << colorToMatch.red() << "," << colorToMatch.green() << "," << colorToMatch.blue();
-
-    // 색상 유사도에 따라 처리
-    if (distance <= THRESHOLD) {  // 색상이 유사함 - 빙고 처리
-        qDebug() << "Color match successful! Processing bingo";
-        bingoStatus[row][col] = true;
-        updateCellStyle(row, col);
+    qDebug() << "Color match successful! Processing bingo";
+    bingoStatus[row][col] = true;
+    updateCellStyle(row, col);
+    
+    // 정답 소리 재생 추가
+    SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
+    
+    // 선택 초기화
+    selectedCell = qMakePair(-1, -1);
+    
+    // 빙고 점수 업데이트
+    updateBingoScore();
+    
+    // 상태 메시지 업데이트
+    statusMessageLabel->setText("Great job! Perfect color match!");
+    
+    // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
+    if (isCapturing) {
+        // 카메라 캡처 중지
+        camera->stopCapturing();
+        isCapturing = false;
         
-        // 정답 소리 재생 추가
-        SoundManager::getInstance()->playEffect(SoundManager::CORRECT_SOUND);
-        
-        // 선택 초기화
-        selectedCell = qMakePair(-1, -1);
-        
-        // 빙고 점수 업데이트
-        updateBingoScore();
-        
-        // 상태 메시지 업데이트
-        statusMessageLabel->setText("Great job! Perfect color match!");
-        
-        // 카메라 중지 - 물리 버튼 사용시 상태만 업데이트
-        if (isCapturing) {
-            // 카메라 캡처 중지
-            camera->stopCapturing();
-            isCapturing = false;
-            
-            // 재시작 타이머 중지
-            if (cameraRestartTimer) {
-                cameraRestartTimer->stop();
-            }
-            
-            // 카메라 뷰에 메시지 표시
-            if (cameraView) {
-                cameraView->setText("Camera is off");
-                cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
-            }
-            
-            // 슬라이더 위젯 숨김
-            if (sliderWidget) {
-                sliderWidget->hide();
-            }
+        // 재시작 타이머 중지
+        if (cameraRestartTimer) {
+            cameraRestartTimer->stop();
         }
-    } else {  // 색상이 다름 - X 표시 (개선된 코드)
-        qDebug() << "Color match failed - drawing X mark";
         
-        // 셀 자체에 X 표시 그리기
-        QPixmap cellBg(bingoCells[row][col]->size());
-        cellBg.fill(cellColors[row][col]);
-        
-        // X 이미지 준비 - 셀 크기에 맞게 스케일링
-        QPixmap scaledX = xImage.scaled(
-            bingoCells[row][col]->width() - 20,
-            bingoCells[row][col]->height() - 20,
-            Qt::KeepAspectRatio,
-            Qt::SmoothTransformation
-        );
-        
-        // 배경에 X 이미지 합성
-        QPainter painter(&cellBg);
-        painter.drawPixmap(
-            (cellBg.width() - scaledX.width()) / 2,
-            (cellBg.height() - scaledX.height()) / 2,
-            scaledX
-        );
-        
-        // 테두리 추가
-        QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-        if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-        if (col == 2) borderStyle += " border-right: 1px solid black;";
-        
-        // 셀에 합성된 이미지 적용 - 보너스 셀이더라도 X만 표시하도록 수정
-        bingoCells[row][col]->setPixmap(cellBg);
-        bingoCells[row][col]->setStyleSheet(borderStyle);
-        
-        // 상태 메시지 업데이트
-        statusMessageLabel->setText("The colors don't match. Keep trying!");
-        
-        // 2초 후에 X 표시 제거하고 원래 스타일로 돌려놓기
-        QTimer::singleShot(2000, this, [this, row, col]() {
-            if (row >= 0 && row < 3 && col >= 0 && col < 3) {
-                if (!bingoStatus[row][col]) {
-                    updateCellStyle(row, col);
-                }
-            }
-            statusMessageLabel->setText("Try again or select another cell");
-        });
-        
-        // 실패 효과음 재생
-        SoundManager::getInstance()->playEffect(SoundManager::INCORRECT_SOUND);
-        
-        // 기존 타이머가 돌고 있으면 중지하고 새로 시작
-        if (fadeXTimer->isActive()) {
-            fadeXTimer->stop();
+        // 카메라 뷰에 메시지 표시
+        if (cameraView) {
+            cameraView->setText("Camera is off");
+            cameraView->setStyleSheet("QLabel { color: gray; font-weight: bold; }");
         }
-        fadeXTimer->start(2000);
+        
+        // 슬라이더 위젯 숨김
+        if (sliderWidget) {
+            sliderWidget->hide();
+        }
     }
 
     capturedColor = QColor();
@@ -1821,13 +1876,19 @@ void BingoWidget::updateTimerPosition() {
         int margin = 20;
         timerLabel->move((width() - timerLabel->width()) / 2, margin);
         timerLabel->raise(); // 다른 위젯 위에 표시
+        
+        // 빙고 점수 레이블을 타이머 아래로 이동
+        if (bingoScoreLabel) {
+            bingoScoreLabel->move((width() - bingoScoreLabel->width()) / 2, margin + timerLabel->height() + 5);
+            bingoScoreLabel->raise(); // 다른 위젯 위에 표시
+        }
     }
 }
 
 // 타이머 시작
 void BingoWidget::startGameTimer() {
     // 타이머 초기화
-    remainingSeconds = 120; // 2분
+    remainingSeconds = 180; // 3분
     updateTimerDisplay();
     
     // 타이머 시작
@@ -2031,19 +2092,19 @@ void BingoWidget::setCustomColors(const QList<QColor> &colors) {
                 borderStyle += " border-right: 1px solid black;";
             }
             
-            // 보너스 칸인 경우 데이지 꽃 이미지 표시
+            // 보너스 칸인 경우 별 이미지 표시
             if (isBonusCell[row][col]) {
-                // 데이지 꽃 이미지 생성 - 크기 키움
-                QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
+                // 별 이미지 생성 - 크기 키움
+                QPixmap starImage = PixelArtGenerator::getInstance()->createStarImage(70);
                 
                 // 디버깅: 이미지 생성 확인
-                qDebug() << "Daisy image created - size:" << daisyImage.size() 
-                         << "isNull:" << daisyImage.isNull() 
-                         << "for cell:" << row << col;
+                qDebug() << "Star image created - size:" << starImage.size() 
+                        << "isNull:" << starImage.isNull() 
+                        << "for cell:" << row << col;
                 
                 // 셀에 이미지 설정 (스타일시트 적용 전에 이미지 설정이 필요)
                 bingoCells[row][col]->clear();
-                bingoCells[row][col]->setPixmap(daisyImage);
+                bingoCells[row][col]->setPixmap(starImage);
                 bingoCells[row][col]->setAlignment(Qt::AlignCenter); // 중앙 정렬로 변경
                 bingoCells[row][col]->setScaledContents(false); // 이미지 크기 자동 조정 비활성화
                         
@@ -2070,7 +2131,7 @@ void BingoWidget::setCustomColors(const QList<QColor> &colors) {
     }
 }
 
-// updateCellStyle 함수 수정: 셀이 선택되거나 X 표시가 나타날 때 데이지 꽃 이미지가 사라지도록 함
+// updateCellStyle 함수 수정: 셀이 선택되거나 X 표시가 나타날 때 별 이미지가 사라지도록 함
 void BingoWidget::updateCellStyle(int row, int col) {
     // 경계선 스타일 생성
     QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
@@ -2112,17 +2173,17 @@ void BingoWidget::updateCellStyle(int row, int col) {
         bingoCells[row][col]->clear();
         bingoCells[row][col]->setContentsMargins(0, 0, 0, 0);
         
-        // 보너스 칸인 경우 데이지 꽃 이미지 다시 표시
+        // 보너스 칸인 경우 별 이미지 다시 표시
         if (isBonusCell[row][col]) {
-            QPixmap daisyImage = PixelArtGenerator::getInstance()->createDaisyFlowerImage(70);
+            QPixmap starImage = PixelArtGenerator::getInstance()->createStarImage(70);
             
             // 디버깅: updateCellStyle에서 이미지 생성 확인
-            qDebug() << "updateCellStyle: Daisy image created - size:" << daisyImage.size() 
-                     << "isNull:" << daisyImage.isNull() 
-                     << "for cell:" << row << col;
+            qDebug() << "updateCellStyle: Star image created - size:" << starImage.size() 
+                    << "isNull:" << starImage.isNull() 
+                    << "for cell:" << row << col;
             
             bingoCells[row][col]->clear();
-            bingoCells[row][col]->setPixmap(daisyImage);
+            bingoCells[row][col]->setPixmap(starImage);
             bingoCells[row][col]->setAlignment(Qt::AlignCenter);
             bingoCells[row][col]->setScaledContents(false); // 이미지 크기 자동 조정 비활성화
             
@@ -2175,8 +2236,8 @@ void BingoWidget::showBonusMessage() {
         }
     }
     
-    // 실제 텍스트 그리기 (파란색으로 변경 - Single Game 버튼 배경색)
-    painter.setPen(QColor(50, 120, 220));  // 파란색
+    // 실제 텍스트 그리기 (노란색으로 변경)
+    painter.setPen(Qt::yellow);  // 노란색
     painter.drawText(x, y, "BONUS!");
     
     painter.end();
@@ -2187,7 +2248,7 @@ void BingoWidget::showBonusMessage() {
     bonusMessageLabel->raise(); // 다른 위젯 위에 표시
     bonusMessageLabel->show();
     
-    // 2초 후 메시지 숨기기 (1초에서 2초로 변경)
+    // 2초 후 메시지 숨기기
     bonusMessageTimer->start(2000);
 }
 
@@ -2439,8 +2500,8 @@ QColor BingoWidget::adjustColorByTilt(const QColor &color, const AccelerometerDa
     int tiltX = tiltData.x;
     
     // x축 틸트에 따른 채도 조정 계수 (범위를 조정하기 위한 매핑)
-    // 기울기 범위(-2000~2000)를 채도 조정 범위로 매핑 - 계수 증가
-    double saturationAdjustment = tiltX / 4.0;  // 20.0에서 8.0으로 변경하여 약 2.5배 더 민감하게
+    // 기울기 범위를 채도 조정 범위로 매핑 - 계수 증가하여 더 민감하게
+    double saturationAdjustment = tiltX / 2.0;  // 4.0 -> 2.0으로 변경하여 2배 더 민감하게
     
     // 새 채도 계산 (범위를 0-255 내로 유지)
     int newSaturation = qBound(0, s + static_cast<int>(saturationAdjustment), 255);
@@ -2449,13 +2510,20 @@ QColor BingoWidget::adjustColorByTilt(const QColor &color, const AccelerometerDa
     int tiltY = tiltData.y;
     
     // y축 틸트에 따른 명도 조정 계수 - 계수 증가
-    double valueAdjustment = tiltY / 6.0;  // 30.0에서 12.0으로 변경하여 약 2.5배 더 민감하게
+    double valueAdjustment = tiltY / 3.0;  // 6.0 -> 3.0으로 변경하여 2배 더 민감하게
     
     // 새 명도 계산 (범위를 0-255 내로 유지)
     int newValue = qBound(0, v + static_cast<int>(valueAdjustment), 255);
     
-    // 색상(Hue)은 유지하고 채도와 명도만 조정된 새 색상 반환
-    return QColor::fromHsv(h, newSaturation, newValue);
+    // 추가: RGB 값도 직접 조정 (미세 조정)
+    QColor adjustedHSV = QColor::fromHsv(h, newSaturation, newValue);
+    
+    // RGB 색상 모델로 직접 조정 (가속도계 Z 축을 이용한 R 값 조정)
+    int tiltZ = tiltData.z;
+    int r = qBound(0, adjustedHSV.red() + (tiltZ / 30), 255);
+    
+    // 최종 색상 반환 (HSV와 RGB 조정 조합)
+    return QColor(r, adjustedHSV.green(), adjustedHSV.blue());
 }
 
 // 원 미리보기만 빠르게 업데이트하는 함수

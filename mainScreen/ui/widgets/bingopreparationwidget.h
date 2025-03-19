@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include "hardwareInterface/v4l2camera.h"
+#include "p2pnetwork.h"
 
 // 게임 모드 열거형 추가
 enum class GameMode {
@@ -48,6 +49,7 @@ private slots:
     void onBackButtonClicked();
     void updateCameraFrame();
     void handleCameraDisconnect();
+    void onOpponentDisconnected();
 
 private:
     QLabel *cameraView;
@@ -58,6 +60,9 @@ private:
 
     void startCamera();
     QList<QColor> captureColorsFromFrame();
+
+    // 네트워크
+    P2PNetwork *network;
 };
 
 #endif // BINGOPREPARATIONWIDGET_H 

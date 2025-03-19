@@ -541,6 +541,18 @@ moc_mainwindow.cpp: ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QImage \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMutex \
+		../mainScreen/p2pnetwork.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/bingowidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QGridLayout \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRandomGenerator \
@@ -564,22 +576,12 @@ moc_mainwindow.cpp: ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/multigamewidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QShowEvent \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QHideEvent \
-		../mainScreen/p2pnetwork.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
 		../mainScreen/matchingwidget.h \
 		moc_predefs.h \
 		../../work/buildroot-2024.02.1/output/host/bin/moc
@@ -738,6 +740,8 @@ moc_bingowidget.cpp: ../mainScreen/ui/widgets/bingowidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		moc_predefs.h \
@@ -876,6 +880,18 @@ moc_bingopreparationwidget.cpp: ../mainScreen/ui/widgets/bingopreparationwidget.
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QImage \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMutex \
+		../mainScreen/p2pnetwork.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		moc_predefs.h \
 		../../work/buildroot-2024.02.1/output/host/bin/moc
 	/home/user/work/buildroot-2024.02.1/output/host/bin/moc $(DEFINES) --include /home/user/ColorBingo/build-mainScreen-qt_embedded-Debug/moc_predefs.h -I/home/user/work/buildroot-2024.02.1/output/host/mkspecs/devices/linux-buildroot-g++ -I/home/user/ColorBingo/mainScreen -I/home/user/work/alsa/install/include -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I. -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1 -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1/aarch64-linux-gnu -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1/backward -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/lib/gcc/aarch64-linux-gnu/7.3.1/include -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/lib/gcc/aarch64-linux-gnu/7.3.1/include-fixed -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include ../mainScreen/ui/widgets/bingopreparationwidget.h -o moc_bingopreparationwidget.cpp
@@ -1047,6 +1063,9 @@ moc_multigamewidget.cpp: ../mainScreen/ui/widgets/multigamewidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
+		../mainScreen/hardwareInterface/accelerometer.h \
 		moc_predefs.h \
 		../../work/buildroot-2024.02.1/output/host/bin/moc
 	/home/user/work/buildroot-2024.02.1/output/host/bin/moc $(DEFINES) --include /home/user/ColorBingo/build-mainScreen-qt_embedded-Debug/moc_predefs.h -I/home/user/work/buildroot-2024.02.1/output/host/mkspecs/devices/linux-buildroot-g++ -I/home/user/ColorBingo/mainScreen -I/home/user/work/alsa/install/include -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5 -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore -I. -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1 -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1/aarch64-linux-gnu -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include/c++/7.3.1/backward -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/lib/gcc/aarch64-linux-gnu/7.3.1/include -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/lib/gcc/aarch64-linux-gnu/7.3.1/include-fixed -I/home/user/work/buildroot-2024.02.1/output/host/opt/ext-toolchain/aarch64-linux-gnu/include -I/home/user/work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include ../mainScreen/ui/widgets/multigamewidget.h -o moc_multigamewidget.cpp
@@ -1460,6 +1479,8 @@ moc_matchingwidget.cpp: ../mainScreen/matchingwidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
 		moc_predefs.h \
 		../../work/buildroot-2024.02.1/output/host/bin/moc
@@ -1815,6 +1836,18 @@ main.o: ../mainScreen/main.cpp ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QImage \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMutex \
+		../mainScreen/p2pnetwork.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/bingowidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QGridLayout \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRandomGenerator \
@@ -1838,22 +1871,12 @@ main.o: ../mainScreen/main.cpp ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/multigamewidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QShowEvent \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QHideEvent \
-		../mainScreen/p2pnetwork.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
 		../mainScreen/matchingwidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QApplication \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qapplication.h \
@@ -2006,6 +2029,18 @@ mainwindow.o: ../mainScreen/mainwindow.cpp ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QImage \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMutex \
+		../mainScreen/p2pnetwork.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/bingowidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QGridLayout \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QRandomGenerator \
@@ -2029,22 +2064,12 @@ mainwindow.o: ../mainScreen/mainwindow.cpp ../mainScreen/mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../mainScreen/ui/widgets/multigamewidget.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QShowEvent \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QHideEvent \
-		../mainScreen/p2pnetwork.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
 		../mainScreen/matchingwidget.h \
 		ui_mainwindow.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVariant \
@@ -2265,6 +2290,8 @@ bingowidget.o: ../mainScreen/ui/widgets/bingowidget.cpp ../mainScreen/ui/widgets
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMessageBox \
@@ -2435,6 +2462,18 @@ bingopreparationwidget.o: ../mainScreen/ui/widgets/bingopreparationwidget.cpp ..
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QObject \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QImage \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QMutex \
+		../mainScreen/p2pnetwork.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QUdpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qudpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetworkglobal.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtnetwork-config.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qabstractsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qhostaddress.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpServer \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpserver.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/QTcpSocket \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtNetwork/qtcpsocket.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QSet \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QPainter \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpainter.h \
@@ -2613,6 +2652,9 @@ multigamewidget.o: ../mainScreen/ui/widgets/multigamewidget.cpp ../mainScreen/ui
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
+		../mainScreen/hardwareInterface/accelerometer.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/QMessageBox \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qmessagebox.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtWidgets/qdialog.h \
@@ -3164,6 +3206,8 @@ matchingwidget.o: ../mainScreen/matchingwidget.cpp ../mainScreen/matchingwidget.
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qtextoption.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpen.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../mainScreen/hardwareInterface/accelerometer.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o matchingwidget.o ../mainScreen/matchingwidget.cpp
 
@@ -3363,6 +3407,8 @@ pixelartgenerator.o: ../mainScreen/utils/pixelartgenerator.cpp ../mainScreen/uti
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qfontmetrics.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QColor \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QString \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QVector \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QPointF \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/QDebug \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qdebug.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qmap.h \
@@ -3370,7 +3416,10 @@ pixelartgenerator.o: ../mainScreen/utils/pixelartgenerator.cpp ../mainScreen/uti
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qlocale.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qvariant.h \
 		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qset.h \
-		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontiguouscache.h
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtCore/qcontiguouscache.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QPainterPath \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/qpainterpath.h \
+		../../work/buildroot-2024.02.1/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/qt5/QtGui/QPainterPathStroker
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o pixelartgenerator.o ../mainScreen/utils/pixelartgenerator.cpp
 
 qrc_resources.o: qrc_resources.cpp 
