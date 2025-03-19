@@ -157,11 +157,38 @@ void MainWindow::setupMainScreen()
     leftBearLabel->setFixedSize(bearPixmap.size());
     leftBearLabel->setStyleSheet("background-color: transparent;");
     
-    // Title label
-    QLabel *titleLabel = new QLabel("Color Bingo", centerWidget);
+    // Title image label (대신 이미지 사용)
+    QLabel *titleLabel = new QLabel(centerWidget);
+    
+    // 타이틀 이미지 로드 시도 (여러 경로 시도)
+    QPixmap titlePixmap;
+    if (QFile::exists(":/images/title.png")) {
+        // Qt 리소스 시스템에서 로드
+        titlePixmap = QPixmap(":/images/title.png");
+        qDebug() << "Title image loaded from resources";
+    } else if (QFile::exists("C:/linux/share/ColorBingo/mainScreen/resources/images/title.png")) {
+        // 절대 경로에서 로드
+        titlePixmap = QPixmap("C:/linux/share/ColorBingo/mainScreen/resources/images/title.png");
+        qDebug() << "Title image loaded from absolute path";
+    } else if (QFile::exists("mainScreen/resources/images/title.png")) {
+        // 상대 경로에서 로드
+        titlePixmap = QPixmap("mainScreen/resources/images/title.png");
+        qDebug() << "Title image loaded from relative path";
+    }
+    
+    if (titlePixmap.isNull()) {
+        qDebug() << "Error: Failed to load title image";
+        titleLabel->setText("Color Bingo"); // 이미지 로드 실패 시 기존 텍스트로 대체
+        titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px;");
+    } else {
+        // 이미지 크기 조정 (더 큰 크기로 변경)
+        titlePixmap = titlePixmap.scaledToWidth(600, Qt::SmoothTransformation);
+        titleLabel->setPixmap(titlePixmap);
+        titleLabel->setFixedSize(titlePixmap.size());
+    }
+    
     titleLabel->setAlignment(Qt::AlignCenter);
-    // 더 귀여운 스타일로 타이틀 폰트 수정 - 폰트 크기 더 증가 및 그림자 효과 제거
-    titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px;");
+    titleLabel->setStyleSheet("background-color: transparent;");
     
     // Right bear image label
     QLabel *rightBearLabel = new QLabel(centerWidget);
