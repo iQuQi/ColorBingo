@@ -24,6 +24,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     showRgbValues(true),
     selectedCell(-1, -1),
     bingoCount(0),
+
     remainingSeconds(180), // 3분 = 180초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
     cellRgbValueLabel(nullptr),  // 새 RGB 라벨 초기화
@@ -392,7 +393,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     // 공격 메시지 레이블 초기화
     attackMessageLabel = new QLabel("ATTACK!", this);
     attackMessageLabel->setAlignment(Qt::AlignCenter);
-    attackMessageLabel->setStyleSheet("background-color: rgba(0, 0, 0, 150); color: red; font-weight: bold; font-size: 72px;");
+    attackMessageLabel->setStyleSheet("background-color: rgba(0, 0, 0, 0); color: red; font-weight: bold; font-size: 72px;");
     attackMessageLabel->hide(); // 초기에는 숨김
 
     // 공격 메시지 타이머 초기화
