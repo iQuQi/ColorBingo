@@ -23,7 +23,7 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     showRgbValues(true),
     selectedCell(-1, -1),
     bingoCount(0),
-    remainingSeconds(120), // 2분 = 120초 타이머 초기화
+    remainingSeconds(180), // 2분 = 120초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
     hadBonusInLastLine(false)
 {
@@ -1602,7 +1602,7 @@ void MultiGameWidget::updateTimerPosition() {
 // 타이머 시작
 void MultiGameWidget::startGameTimer() {
     // 타이머 초기화
-    remainingSeconds = 120; // 2분
+    remainingSeconds = 180; // 2분
     updateTimerDisplay();
 
     // 타이머 시작

@@ -181,8 +181,8 @@ void MainWindow::setupMainScreen()
         titleLabel->setText("Color Bingo"); // 이미지 로드 실패 시 기존 텍스트로 대체
         titleLabel->setStyleSheet("font-size: 76px; font-weight: bold; color: #333; background-color: transparent; letter-spacing: 2px;");
     } else {
-        // 이미지 크기 조정 (더 큰 크기로 변경)
-        titlePixmap = titlePixmap.scaledToWidth(600, Qt::SmoothTransformation);
+        // 이미지 크기 조정 (적당한 크기로)
+        titlePixmap = titlePixmap.scaledToWidth(400, Qt::SmoothTransformation);
         titleLabel->setPixmap(titlePixmap);
         titleLabel->setFixedSize(titlePixmap.size());
     }

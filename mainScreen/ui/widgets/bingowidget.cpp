@@ -25,7 +25,7 @@ BingoWidget::BingoWidget(QWidget *parent, const QList<QColor> &initialColors) : 
     showRgbValues(true),
     selectedCell(qMakePair(-1, -1)),
     bingoCount(0),
-    remainingSeconds(120), // 2분 = 120초 타이머 초기화
+    remainingSeconds(180), // 2분 = 120초 타이머 초기화
     sliderWidget(nullptr),  // 추가된 부분
     cellRgbValueLabel(nullptr),  // 새 RGB 라벨 초기화
     accelerometer(nullptr),  // 가속도계 초기화
@@ -1967,7 +1967,7 @@ void BingoWidget::updateTimerPosition() {
 // 타이머 시작
 void BingoWidget::startGameTimer() {
     // 타이머 초기화
-    remainingSeconds = 120; // 2분
+    remainingSeconds = 180; // 2분
     updateTimerDisplay();
     
     // 타이머 시작
