@@ -2579,8 +2579,8 @@ QColor BingoWidget::adjustColorByTilt(const QColor &color, const AccelerometerDa
     int tiltX = tiltData.x;
     
     // x축 틸트에 따른 채도 조정 계수 (범위를 조정하기 위한 매핑)
-    // 기울기 범위를 채도 조정 범위로 매핑 - 계수 증가하여 더 민감하게
-    double saturationAdjustment = tiltX / 2.0;  // 4.0 -> 2.0으로 변경하여 2배 더 민감하게
+    // 기울기 범위(-2000~2000)를 채도 조정 범위로 매핑 - 계수 증가
+    double saturationAdjustment = tiltX / 4.0;  // 20.0에서 8.0으로 변경하여 약 2.5배 더 민감하게
     
     // 새 채도 계산 (범위를 0-255 내로 유지)
     int newSaturation = qBound(0, s + static_cast<int>(saturationAdjustment), 255);
@@ -2589,20 +2589,13 @@ QColor BingoWidget::adjustColorByTilt(const QColor &color, const AccelerometerDa
     int tiltY = tiltData.y;
     
     // y축 틸트에 따른 명도 조정 계수 - 계수 증가
-    double valueAdjustment = tiltY / 3.0;  // 6.0 -> 3.0으로 변경하여 2배 더 민감하게
+    double valueAdjustment = tiltY / 6.0;  // 30.0에서 12.0으로 변경하여 약 2.5배 더 민감하게
     
     // 새 명도 계산 (범위를 0-255 내로 유지)
     int newValue = qBound(0, v + static_cast<int>(valueAdjustment), 255);
     
-    // 추가: RGB 값도 직접 조정 (미세 조정)
-    QColor adjustedHSV = QColor::fromHsv(h, newSaturation, newValue);
-    
-    // RGB 색상 모델로 직접 조정 (가속도계 Z 축을 이용한 R 값 조정)
-    int tiltZ = tiltData.z;
-    int r = qBound(0, adjustedHSV.red() + (tiltZ / 30), 255);
-    
-    // 최종 색상 반환 (HSV와 RGB 조정 조합)
-    return QColor(r, adjustedHSV.green(), adjustedHSV.blue());
+    // 색상(Hue)은 유지하고 채도와 명도만 조정된 새 색상 반환
+    return QColor::fromHsv(h, newSaturation, newValue);
 }
 
 // 원 미리보기만 빠르게 업데이트하는 함수
