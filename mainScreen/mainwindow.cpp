@@ -85,7 +85,7 @@ MainWindow::MainWindow(QWidget *parent) :
     stackedWidget->setCurrentWidget(mainMenu);
 
     // Initial volume setting (medium - 0.75)
-    SoundManager::getInstance()->setBackgroundVolume(0.75f);
+    SoundManager::getInstance()->setBackgroundVolume(0.9f);
     SoundManager::getInstance()->setEffectVolume(0.75f);
     
     // Start background music
@@ -652,7 +652,7 @@ void MainWindow::onVolumeButtonClicked()
              << " (" << levelText << ", value: " << volume << ")";
     
     // Set background music and sound effect volume
-    SoundManager::getInstance()->setBackgroundVolume(volume);
+    SoundManager::getInstance()->setBackgroundVolume(volume + 0.15f);
     SoundManager::getInstance()->setEffectVolume(volume);
     
     // Update button image

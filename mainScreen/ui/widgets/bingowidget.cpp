@@ -1229,16 +1229,60 @@ void BingoWidget::onCaptureButtonClicked() {
         // X 표시는 일정 시간 후 사라지지만 틸트 모드는 유지됨
         QTimer::singleShot(2000, this, [this, row, col]() {
             if (!bingoStatus[row][col]) {  // 이미 매칭되지 않은 경우에만
-                // X 표시만 제거하고 셀 색상 복원
-                QPixmap cellBg(bingoCells[row][col]->size());
-                cellBg.fill(cellColors[row][col]);
-                bingoCells[row][col]->setPixmap(cellBg);
+                // 현재 선택된 셀인지 확인
+                bool isCurrentlySelected = (selectedCell.first == row && selectedCell.second == col);
                 
-                // 테두리 스타일 복원
-                // QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
-                // if (row == 2) borderStyle += " border-bottom: 1px solid black;";
-                // if (col == 2) borderStyle += " border-right: 1px solid black;";
-                // bingoCells[row][col]->setStyleSheet(borderStyle);
+                // 보너스 셀인 경우 별 이미지 다시 표시
+                if (isBonusCell[row][col]) {
+                    // 별 이미지 생성 및 표시
+                    QPixmap starImage = PixelArtGenerator::getInstance()->createStarImage(70);
+                    bingoCells[row][col]->setPixmap(starImage);
+                    bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+                    bingoCells[row][col]->setScaledContents(false);
+                    
+                    // 테두리 스타일 생성 (현재 선택된 셀이면 빨간 테두리, 아니면 검은 테두리)
+                    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+                    if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+                    if (col == 2) borderStyle += " border-right: 1px solid black;";
+                    
+                    // 선택된 셀인 경우에만 빨간 테두리 추가
+                    QString style;
+                    if (isCurrentlySelected) {
+                        style = QString("background-color: %1; %2 border: 3px solid red;")
+                                .arg(cellColors[row][col].name())
+                                .arg(borderStyle);
+                    } else {
+                        style = QString("background-color: %1; %2")
+                                .arg(cellColors[row][col].name())
+                                .arg(borderStyle);
+                    }
+                    
+                    bingoCells[row][col]->setStyleSheet(style);
+                } else {
+                    // 일반 셀은 X 표시만 제거하고 셀 색상 복원
+                    QPixmap cellBg(bingoCells[row][col]->size());
+                    cellBg.fill(cellColors[row][col]);
+                    bingoCells[row][col]->setPixmap(cellBg);
+                    
+                    // 테두리 스타일 생성 (현재 선택된 셀이면 빨간 테두리, 아니면 검은 테두리)
+                    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+                    if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+                    if (col == 2) borderStyle += " border-right: 1px solid black;";
+                    
+                    // 선택된 셀인 경우에만 빨간 테두리 추가
+                    QString style;
+                    if (isCurrentlySelected) {
+                        style = QString("background-color: %1; %2 border: 3px solid red;")
+                                .arg(cellColors[row][col].name())
+                                .arg(borderStyle);
+                    } else {
+                        style = QString("background-color: %1; %2")
+                                .arg(cellColors[row][col].name())
+                                .arg(borderStyle);
+                    }
+                    
+                    bingoCells[row][col]->setStyleSheet(style);
+                }
                 
                 // 틸트 모드 상태 메시지 유지하고 가속도계 상태 재확인
                 if (accelerometer && accelerometer->isInitialized()) {
@@ -1361,11 +1405,43 @@ void BingoWidget::onSubmitButtonClicked() {
         QTimer::singleShot(2000, this, [this, row, col, style]() {
             if (row >= 0 && row < 3 && col >= 0 && col < 3) {
                 if (!bingoStatus[row][col]) {
-                    // X 표시 제거하고 붉은 테두리 스타일 유지
-                    QPixmap cellBg(bingoCells[row][col]->size());
-                    cellBg.fill(cellColors[row][col]);
-                    bingoCells[row][col]->setPixmap(cellBg);
-                    bingoCells[row][col]->setStyleSheet(style);
+                    // 현재 선택된 셀인지 확인
+                    bool isCurrentlySelected = (selectedCell.first == row && selectedCell.second == col);
+                    
+                    // X 표시 제거하고 테두리 스타일 적용
+                    
+                    // 테두리 스타일 생성
+                    QString borderStyle = "border-top: 1px solid black; border-left: 1px solid black;";
+                    if (row == 2) borderStyle += " border-bottom: 1px solid black;";
+                    if (col == 2) borderStyle += " border-right: 1px solid black;";
+                    
+                    // 선택된 셀인 경우에만 빨간 테두리 추가
+                    QString newStyle;
+                    if (isCurrentlySelected) {
+                        newStyle = QString("background-color: %1; %2 border: 3px solid red;")
+                                 .arg(cellColors[row][col].name())
+                                 .arg(borderStyle);
+                    } else {
+                        newStyle = QString("background-color: %1; %2")
+                                 .arg(cellColors[row][col].name())
+                                 .arg(borderStyle);
+                    }
+                    
+                    // 보너스 셀인 경우 별 이미지 다시 표시
+                    if (isBonusCell[row][col]) {
+                        // 별 이미지 생성 및 표시
+                        QPixmap starImage = PixelArtGenerator::getInstance()->createStarImage(70);
+                        bingoCells[row][col]->setPixmap(starImage);
+                        bingoCells[row][col]->setAlignment(Qt::AlignCenter);
+                        bingoCells[row][col]->setScaledContents(false);
+                        bingoCells[row][col]->setStyleSheet(newStyle);
+                    } else {
+                        // 일반 셀의 경우 기본 배경색만 표시
+                        QPixmap cellBg(bingoCells[row][col]->size());
+                        cellBg.fill(cellColors[row][col]);
+                        bingoCells[row][col]->setPixmap(cellBg);
+                        bingoCells[row][col]->setStyleSheet(newStyle);
+                    }
                 }
             }
             statusMessageLabel->setText("Try again or select another cell");
