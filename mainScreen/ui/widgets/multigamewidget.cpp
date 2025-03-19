@@ -178,11 +178,11 @@ MultiGameWidget::MultiGameWidget(QWidget *parent, const QList<QColor> &initialCo
     opponentBingoScoreLabel->setMinimumHeight(30);
 
     // 상대방 빙고 점수 레이블을 빙고판 아래에 추가
-    bingoVLayout->addWidget(opponentBingoScoreLabel, 0, Qt::AlignCenter);
-    if (!opponentBingoScoreLabel) {
-        qDebug() << "opponentBingoScoreLabel is NULL!";
-    }
-    opponentBingoScoreLabel->show();
+    //bingoVLayout->addWidget(opponentBingoScoreLabel, 0, Qt::AlignCenter);
+    //if (!opponentBingoScoreLabel) {
+    //    qDebug() << "opponentBingoScoreLabel is NULL!";
+    //}
+    //opponentBingoScoreLabel->show();
 
     // 오른쪽 부분: 카메라 영역
     cameraArea = new QWidget(this);
@@ -2169,7 +2169,8 @@ void MultiGameWidget::updateTimerDisplay() {
 
 // 타이머 위치 업데이트
 void MultiGameWidget::updateTimerPosition() {
-    if (timerLabel) {
+
+    /*if (timerLabel) {
         // 타이머를 화면 중앙 상단에 배치, 상단 여백(20px)은 유지하면서 수평으로 중앙 정렬
         int margin = 20;
         timerLabel->move((width() - timerLabel->width()) / 2, margin);
@@ -2188,14 +2189,49 @@ void MultiGameWidget::updateTimerPosition() {
             qDebug() << "bingoScoreLabel does not exist";
         }
 
-        /*
+
         // 상대방 빙고 점수 레이블을 빙고 점수 레이블 아래에 배치
         if (opponentBingoScoreLabel) {
             opponentBingoScoreLabel->move((width() - opponentBingoScoreLabel->width()) / 2, yOffset);
             opponentBingoScoreLabel->raise();
-        }*/
-    }
+        }
+    }*/
 
+    if (timerLabel) {
+        // 타이머를 화면 중앙 상단에 배치, 상단 여백(20px)은 유지하면서 수평으로 중앙 정렬
+        int margin = 20;
+        int spacing = 60; // 점수 레이블과 타이머 사이 여백
+
+        int timerX = (width() - timerLabel->width()) / 2; // 중앙 정렬
+        int timerY = margin;
+
+        timerLabel->move(timerX, timerY);
+        timerLabel->raise(); // 다른 위젯 위에 표시
+
+        // 내 빙고 점수를 타이머 왼쪽에 배치
+        if (bingoScoreLabel) {
+            bingoScoreLabel->adjustSize(); // QLabel 크기 자동 조정
+            int bingoScoreX = timerX - bingoScoreLabel->width() - spacing; // 타이머 왼쪽
+            bingoScoreLabel->move(bingoScoreX, timerY);
+            bingoScoreLabel->raise();
+        }
+
+        // 상대방 빙고 점수를 타이머 오른쪽에 배치
+        if (opponentBingoScoreLabel) {
+            opponentBingoScoreLabel->adjustSize(); // QLabel 크기 자동 조정
+            int opponentScoreX = timerX + timerLabel->width() + spacing; // 타이머 오른쪽
+            if (opponentScoreX + opponentBingoScoreLabel->width() > width()) {
+                qDebug() << "Warning: opponentBingoScoreLabel is out of bounds!";
+            }
+            opponentBingoScoreLabel->move(opponentScoreX, timerY);
+            opponentBingoScoreLabel->raise();
+        }
+
+        // 디버깅 정보 출력
+        qDebug() << "Timer Position: " << timerX << timerY;
+        qDebug() << "Bingo Score Position: " << bingoScoreLabel->x() << bingoScoreLabel->y();
+        qDebug() << "Opponent Score Position: " << opponentBingoScoreLabel->x() << opponentBingoScoreLabel->y();
+    }
 
 
 

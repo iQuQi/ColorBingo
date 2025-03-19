@@ -381,6 +381,7 @@ compiler_rcc_clean:
 qrc_resources.cpp: ../mainScreen/resources/resources.qrc \
 		../../work/buildroot-2024.02.1/output/host/bin/rcc \
 		../mainScreen/resources/images/background.jpg \
+		../mainScreen/resources/images/title.png \
 		../mainScreen/resources/music/fail_sound.wav \
 		../mainScreen/resources/music/correct_sound.wav \
 		../mainScreen/resources/music/success_sound.wav \
