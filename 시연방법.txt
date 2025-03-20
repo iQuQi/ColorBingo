@@ -1,18 +1,20 @@
+1. rpiBootFiles 내부 부팅 필요 파일들을, 타깃 시스템에서 지정한 tftp 서버 폴더에 복사
 make /tftpboot
 cp ext2img.gz /tftpboot 
 cp ext2img2.gz /tftpboot
 cp wt2837.dtb /tftpboot
 
-2. 타깃시스템에서 이미지 다운로드 및 SD 카드에 저장
+2. 타깃시스템 보드에서 이미지 다운로드 및 SD 카드에 저장
 tftp 80000 Image
-fatwrite mmc 0:1 80000 Image 2000000
+fatwrite mmc 0:1 80000 Image 3000000
 tftp 80000 wt2837.dtb
 fatwrite mmc 0:1 80000 wt2837.dtb 10000
 tftp 80000 ext2img.gz # 멀티모드의 경우 추가 보드에는 ext2img2.gz 사용
 fatwrite mmc 0:1 80000 ext2img.gz 3000000
 
 3. U-Boot의 부트 옵션 변경 및 저장 (U-Boot가 부팅 시 SD 카드에서 이미지들을 특정 RAM주소에 로드하도록)
-setenv bootcmd 'fatload mmc 0:1 80000 Image; fatload mmc 0:1 3100000 wt2837.dtb; fatload mmc 0:1 3200000 ext2img.gz; booti 80000 - 3100000' # 멀티모드의 경우 추가 보드에는 ext2img.gz 대신 ext2img2.gz 사용
+(멀티모드의 경우 추가 보드에는 ext2img.gz 대신 ext2img2.gz 사용)
+setenv bootcmd 'fatload mmc 0:1 80000 Image; fatload mmc 0:1 3100000 wt2837.dtb; fatload mmc 0:1 3200000 ext2img.gz; booti 80000 - 3100000'
 saveenv
 
 4. 보드 리셋
