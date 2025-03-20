@@ -1,4 +1,4 @@
-mage /tftpboot
+make /tftpboot
 cp ext2img.gz /tftpboot 
 cp ext2img2.gz /tftpboot
 cp wt2837.dtb /tftpboot
